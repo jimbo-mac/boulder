@@ -1,16 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { Screen } from '../components/Screen'
+import {
+  errorMessage as message,
+  inputClass as input,
+  linkButtonClass as linkButton,
+  primaryButtonClass as primaryButton,
+} from '../components/ui'
 import { sendCode, verifyCode } from '../lib/db/auth'
-
-const input =
-  'h-12 w-full rounded-lg border border-stone-700 bg-stone-900 px-4 text-base text-stone-100 placeholder:text-stone-500 focus:border-stone-400 focus:outline-none'
-const primaryButton =
-  'h-12 w-full rounded-lg bg-stone-100 text-base font-semibold text-stone-950 active:bg-stone-300 disabled:opacity-50'
-const linkButton = 'py-2 text-sm text-stone-400 underline underline-offset-4'
-
-function message(err: unknown): string {
-  return err instanceof Error ? err.message : 'Something went wrong. Try again.'
-}
 
 export function SignIn() {
   const [step, setStep] = useState<'email' | 'code'>('email')

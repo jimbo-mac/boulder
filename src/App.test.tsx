@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Session } from './lib/db/auth'
 import App from './App'
 
@@ -15,11 +15,21 @@ vi.mock('./lib/db/auth', () => ({
   signOut: vi.fn(),
 }))
 
+vi.mock('./lib/db/runs', () => ({
+  logRun: vi.fn(),
+  listRuns: vi.fn().mockResolvedValue([]),
+  runsBetween: vi.fn().mockResolvedValue([]),
+}))
+
 const fakeSession = { user: { email: 'me@example.com' } } as Session
 
-describe('App auth gate', () => {
+describe('App', () => {
   beforeEach(() => {
     emit = () => {}
+    window.location.hash = ''
+  })
+  afterEach(() => {
+    window.location.hash = ''
   })
 
   it('shows loading until the session is known', () => {
@@ -33,10 +43,25 @@ describe('App auth gate', () => {
     expect(screen.getByRole('button', { name: 'Email me a code' })).toBeInTheDocument()
   })
 
-  it('shows the app when signed in, and returns to sign-in after sign-out', () => {
+  it('opens on the Log screen on a phone when signed in', () => {
     render(<App />)
     act(() => emit(fakeSession))
-    expect(screen.getByText('Signed in as me@example.com')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save run' })).toBeInTheDocument()
+  })
+
+  it('switches screens when the hash changes', async () => {
+    render(<App />)
+    act(() => emit(fakeSession))
+    act(() => {
+      window.location.hash = '#/settings'
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    })
+    expect(await screen.findByText('me@example.com')).toBeInTheDocument()
+  })
+
+  it('returns to sign-in after signing out', () => {
+    render(<App />)
+    act(() => emit(fakeSession))
     act(() => emit(null))
     expect(screen.getByRole('button', { name: 'Email me a code' })).toBeInTheDocument()
   })
