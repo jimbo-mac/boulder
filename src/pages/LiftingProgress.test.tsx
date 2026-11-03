@@ -15,17 +15,25 @@ vi.mock('../components/DateLineChart', () => ({
 const mockList = vi.mocked(listExercises)
 const mockSets = vi.mocked(setsForExercise)
 
-const squat = { id: 'sq', name: 'Back Squat', category: 'squat' as const }
-const bench = { id: 'bp', name: 'Bench Press', category: 'push' as const }
+const squat = { id: 'sq', name: 'Back Squat', category: 'squat' as const, tracking: 'weight' as const }
+const bench = { id: 'bp', name: 'Bench Press', category: 'push' as const, tracking: 'weight' as const }
+const pullup = { id: 'pu', name: 'Pull-up', category: 'pull' as const, tracking: 'reps' as const }
 
 describe('LiftingProgress', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 10, 4, 12, 0))
-    mockList.mockReset().mockResolvedValue([squat, bench])
+    mockList.mockReset().mockResolvedValue([squat, bench, pullup])
     mockSets.mockReset().mockImplementation((id) =>
       Promise.resolve(
-        id === 'sq'
+        id === 'pu'
+          ? [
+              { date: '2026-10-28', weightLb: 0, reps: 8, isWarmup: false },
+              { date: '2026-10-28', weightLb: 0, reps: 6, isWarmup: false },
+              { date: '2026-11-03', weightLb: 0, reps: 11, isWarmup: false },
+              { date: '2026-11-03', weightLb: 0, reps: 9, isWarmup: false },
+            ]
+          : id === 'sq'
           ? [
               { date: '2026-10-20', weightLb: 135, reps: 5, isWarmup: true },
               { date: '2026-10-20', weightLb: 205, reps: 5, isWarmup: false }, // 239
@@ -53,6 +61,17 @@ describe('LiftingProgress', () => {
     fireEvent.change(screen.getByLabelText('Exercise'), { target: { value: 'bp' } })
     expect(await screen.findByText('2026-11-01=143(rough)')).toBeInTheDocument()
     expect(screen.getByText(/Hollow dots are rough/)).toBeInTheDocument()
+  })
+
+  it('charts reps per set for reps-only exercises', async () => {
+    render(<LiftingProgress />)
+    await screen.findByTestId('chart')
+    fireEvent.change(screen.getByLabelText('Exercise'), { target: { value: 'pu' } })
+    expect(await screen.findByText('2026-10-28=8 2026-11-03=11')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Reps per set' })).toBeInTheDocument()
+    expect(screen.getAllByText('11 reps')).toHaveLength(2) // latest best set and best set
+    expect(screen.getByText(/20 total/)).toBeInTheDocument()
+    expect(screen.getByText('+3')).toBeInTheDocument()
   })
 
   it('prompts to log a lift when there are no exercises', async () => {

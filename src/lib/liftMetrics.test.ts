@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { estimate1RM, oneRepMaxByDay, setVolume, totalVolume } from './metrics'
+import { estimate1RM, oneRepMaxByDay, repsByDay, setVolume, totalVolume } from './metrics'
+
+describe('repsByDay', () => {
+  const set = (date: string, reps: number, isWarmup = false) => ({ date, weightLb: 0, reps, isWarmup })
+
+  it('gives best set and total working reps per day, oldest first', () => {
+    expect(
+      repsByDay([set('2026-11-04', 10), set('2026-11-04', 8), set('2026-11-01', 7), set('2026-11-04', 5, true)]),
+    ).toEqual([
+      { date: '2026-11-01', bestSet: 7, totalReps: 7, workingSets: 1 },
+      { date: '2026-11-04', bestSet: 10, totalReps: 18, workingSets: 2 },
+    ])
+  })
+  it('skips days with only warm-ups', () => {
+    expect(repsByDay([set('2026-11-01', 5, true)])).toEqual([])
+  })
+  it('rejects invalid reps', () => {
+    expect(() => repsByDay([set('2026-11-01', 0)])).toThrow(RangeError)
+  })
+})
 
 describe('estimate1RM (Epley)', () => {
   it('is weight × (1 + reps/30)', () => {

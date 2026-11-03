@@ -3,7 +3,7 @@
  * localStorage after every change so it survives the tab being closed mid-workout.
  */
 import { isValidISODate, type ISODate } from './dates'
-import type { Exercise } from './exercises'
+import type { Exercise, Tracking } from './exercises'
 import type { NewLiftSet } from './db/lifts'
 
 export interface DraftSet {
@@ -118,7 +118,12 @@ export type DraftCheck =
  * Turn the draft into sets to save. Completely blank set rows are skipped;
  * half-filled rows are errors, so nothing is silently dropped.
  */
-export function checkDraft(draft: LiftDraft, today: ISODate): DraftCheck {
+export function checkDraft(
+  draft: LiftDraft,
+  today: ISODate,
+  /** Looked up from the catalog (not stored in the draft), so older drafts still work. */
+  trackingOf: (exerciseId: string) => Tracking = () => 'weight',
+): DraftCheck {
   const problems: string[] = []
   if (!isValidISODate(draft.date) || draft.date > today) {
     problems.push("Pick a date that isn't in the future.")
@@ -127,7 +132,20 @@ export function checkDraft(draft: LiftDraft, today: ISODate): DraftCheck {
   let exerciseCount = 0
   for (const block of draft.blocks) {
     let blockSets = 0
+    const repsOnly = trackingOf(block.exerciseId) === 'reps'
     block.sets.forEach((set, i) => {
+      if (repsOnly) {
+        // Reps-only exercises (pull-ups): weight is ignored and stored as 0.
+        if (set.reps.trim() === '') return
+        const reps = parseReps(set.reps)
+        if (reps === null) {
+          problems.push(`${block.exerciseName}, set ${i + 1}: enter reps.`)
+          return
+        }
+        sets.push({ exerciseId: block.exerciseId, weightLb: 0, reps, isWarmup: set.warmup })
+        blockSets += 1
+        return
+      }
       if (set.weight.trim() === '' && set.reps.trim() === '') return
       const weightLb = parseWeight(set.weight)
       const reps = parseReps(set.reps)

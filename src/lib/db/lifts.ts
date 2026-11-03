@@ -1,32 +1,37 @@
 import type { ISODate } from '../dates'
-import { isCategory, normalizeName, type Category, type Exercise } from '../exercises'
+import { isCategory, isTracking, normalizeName, type Category, type Exercise, type Tracking } from '../exercises'
 import type { LiftSet } from '../metrics'
 import { supabase } from './client'
 
 export async function listExercises(): Promise<Exercise[]> {
   const { data, error } = await supabase
     .from('exercises')
-    .select('id, name, category')
+    .select('id, name, category, tracking')
     .order('name', { ascending: true })
   if (error) throw error
   return data.map((row) => ({
     id: row.id,
     name: row.name,
     category: isCategory(row.category) ? row.category : 'other',
+    tracking: isTracking(row.tracking) ? row.tracking : 'weight',
   }))
 }
 
-export async function createExercise(name: string, category: Category): Promise<Exercise> {
+export async function createExercise(
+  name: string,
+  category: Category,
+  tracking: Tracking,
+): Promise<Exercise> {
   const { data, error } = await supabase
     .from('exercises')
-    .insert({ name: normalizeName(name), category })
+    .insert({ name: normalizeName(name), category, tracking })
     .select('id, name, category')
     .single()
   if (error) {
     if (error.code === '23505') throw new Error(`You already have an exercise called "${normalizeName(name)}".`)
     throw error
   }
-  return { id: data.id, name: data.name, category }
+  return { id: data.id, name: data.name, category, tracking }
 }
 
 export interface NewLiftSet extends LiftSet {

@@ -13,26 +13,40 @@ export function isCategory(value: string): value is Category {
   return CATEGORIES.some((c) => c.value === value)
 }
 
+/** weight = weight × reps (est. 1RM); reps = reps only, e.g. pull-ups. Must match the DB check. */
+export type Tracking = 'weight' | 'reps'
+
+export function isTracking(value: string): value is Tracking {
+  return value === 'weight' || value === 'reps'
+}
+
 export interface Exercise {
   id: string
   name: string
   category: Category
+  tracking: Tracking
+}
+
+export interface ExerciseTemplate {
+  name: string
+  category: Category
+  tracking: Tracking
 }
 
 /** Offered in the picker until added, so a new catalog isn't empty. */
-export const SUGGESTED_EXERCISES: readonly { name: string; category: Category }[] = [
-  { name: 'Back Squat', category: 'squat' },
-  { name: 'Front Squat', category: 'squat' },
-  { name: 'Deadlift', category: 'hinge' },
-  { name: 'Romanian Deadlift', category: 'hinge' },
-  { name: 'Bench Press', category: 'push' },
-  { name: 'Overhead Press', category: 'push' },
-  { name: 'Incline Bench Press', category: 'push' },
-  { name: 'Barbell Row', category: 'pull' },
-  { name: 'Pull-up', category: 'pull' },
-  { name: 'Lat Pulldown', category: 'pull' },
-  { name: 'Bicep Curl', category: 'pull' },
-  { name: 'Reverse Curl', category: 'pull' },
+export const SUGGESTED_EXERCISES: readonly ExerciseTemplate[] = [
+  { name: 'Back Squat', category: 'squat', tracking: 'weight' },
+  { name: 'Front Squat', category: 'squat', tracking: 'weight' },
+  { name: 'Deadlift', category: 'hinge', tracking: 'weight' },
+  { name: 'Romanian Deadlift', category: 'hinge', tracking: 'weight' },
+  { name: 'Bench Press', category: 'push', tracking: 'weight' },
+  { name: 'Overhead Press', category: 'push', tracking: 'weight' },
+  { name: 'Incline Bench Press', category: 'push', tracking: 'weight' },
+  { name: 'Barbell Row', category: 'pull', tracking: 'weight' },
+  { name: 'Pull-up', category: 'pull', tracking: 'reps' },
+  { name: 'Lat Pulldown', category: 'pull', tracking: 'weight' },
+  { name: 'Bicep Curl', category: 'pull', tracking: 'weight' },
+  { name: 'Reverse Curl', category: 'pull', tracking: 'weight' },
 ]
 
 /** Case- and whitespace-insensitive key, matching the DB's unique index on lower(name). */
@@ -61,7 +75,7 @@ function matchesQuery(name: string, query: string): boolean {
 
 export interface PickerOptions {
   matches: Exercise[]
-  suggestions: { name: string; category: Category }[]
+  suggestions: ExerciseTemplate[]
   /** Offer "Create …" when the query is non-empty and not an exact existing name. */
   canCreate: boolean
 }

@@ -195,6 +195,30 @@ export function oneRepMaxByDay(
   return [...best.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
 }
 
+export interface RepsPoint {
+  date: ISODate
+  /** Most reps in a single working set that day. */
+  bestSet: number
+  /** All working reps that day. */
+  totalReps: number
+  workingSets: number
+}
+
+/** For reps-only exercises (pull-ups): best set and total reps per day, oldest first. Warm-ups ignored. */
+export function repsByDay(sets: readonly (LiftSet & { date: ISODate })[]): RepsPoint[] {
+  const byDay = new Map<ISODate, RepsPoint>()
+  for (const set of sets) {
+    if (!Number.isInteger(set.reps) || set.reps < 1) throw new RangeError('reps must be a positive integer')
+    if (set.isWarmup) continue
+    const day = byDay.get(set.date) ?? { date: set.date, bestSet: 0, totalReps: 0, workingSets: 0 }
+    day.bestSet = Math.max(day.bestSet, set.reps)
+    day.totalReps += set.reps
+    day.workingSets += 1
+    byDay.set(set.date, day)
+  }
+  return [...byDay.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+}
+
 export interface WeeklyMileage {
   /** Monday that starts the week. */
   weekStart: ISODate

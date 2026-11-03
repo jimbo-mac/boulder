@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { nameKey, normalizeName, pickerOptions, type Exercise } from './exercises'
 
 const catalog: Exercise[] = [
-  { id: '1', name: 'Bench Press', category: 'push' },
-  { id: '2', name: 'Goblet Squat', category: 'squat' },
+  { id: '1', name: 'Bench Press', category: 'push', tracking: 'weight' },
+  { id: '2', name: 'Goblet Squat', category: 'squat', tracking: 'weight' },
 ]
 
 describe('nameKey / normalizeName', () => {

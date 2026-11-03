@@ -47,6 +47,9 @@ export function LiftForm() {
 
   const exercises = [...(catalog.data ?? []), ...created.filter((c) => !catalog.data?.some((e) => e.id === c.id))]
 
+  const trackingOf = (exerciseId: string) =>
+    exercises.find((e) => e.id === exerciseId)?.tracking ?? 'weight'
+
   function edit(fn: (d: LiftDraft) => LiftDraft) {
     setDraft(fn)
     setSaved(null)
@@ -61,7 +64,7 @@ export function LiftForm() {
   }
 
   async function onSave() {
-    const check = checkDraft(draft, today)
+    const check = checkDraft(draft, today, trackingOf)
     if (!check.ok) {
       setProblems(check.problems)
       return
@@ -110,6 +113,7 @@ export function LiftForm() {
         <ExerciseBlock
           key={block.id}
           block={block}
+          repsOnly={trackingOf(block.exerciseId) === 'reps'}
           onChange={(fn) => edit(fn)}
         />
       ))}
@@ -163,9 +167,12 @@ export function LiftForm() {
 
 function ExerciseBlock({
   block,
+  repsOnly,
   onChange,
 }: {
   block: DraftBlock
+  /** Pull-ups etc.: no weight box. */
+  repsOnly: boolean
   onChange: (fn: (d: LiftDraft) => LiftDraft) => void
 }) {
   return (
@@ -183,10 +190,20 @@ function ExerciseBlock({
       </div>
 
       {block.sets.length > 0 && (
-        <div className="grid grid-cols-[1.5rem_1fr_1rem_1fr_2.75rem_2.75rem] items-center gap-x-2 gap-y-2">
+        <div
+          className={`grid items-center gap-x-2 gap-y-2 ${
+            repsOnly
+              ? 'grid-cols-[1.5rem_1fr_2.75rem_2.75rem]'
+              : 'grid-cols-[1.5rem_1fr_1rem_1fr_2.75rem_2.75rem]'
+          }`}
+        >
           <span />
-          <span className="text-center text-xs text-stone-500">lb</span>
-          <span />
+          {!repsOnly && (
+            <>
+              <span className="text-center text-xs text-stone-500">lb</span>
+              <span />
+            </>
+          )}
           <span className="text-center text-xs text-stone-500">reps</span>
           <span className="text-center text-xs text-stone-500">warm-up</span>
           <span />
@@ -195,20 +212,24 @@ function ExerciseBlock({
             return (
               <div key={set.id} className="contents">
                 <span className="text-sm text-stone-500 tabular-nums">{i + 1}</span>
-                <input
-                  aria-label={`${label} weight (lb)`}
-                  type="text"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  placeholder="0"
-                  value={set.weight}
-                  onChange={(e) => {
-                    const weight = e.target.value
-                    onChange((d) => updateSet(d, block.id, set.id, { weight }))
-                  }}
-                  className={smallInput}
-                />
-                <span className="text-center text-stone-500">×</span>
+                {!repsOnly && (
+                  <>
+                    <input
+                      aria-label={`${label} weight (lb)`}
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      placeholder="0"
+                      value={set.weight}
+                      onChange={(e) => {
+                        const weight = e.target.value
+                        onChange((d) => updateSet(d, block.id, set.id, { weight }))
+                      }}
+                      className={smallInput}
+                    />
+                    <span className="text-center text-stone-500">×</span>
+                  </>
+                )}
                 <input
                   aria-label={`${label} reps`}
                   type="text"

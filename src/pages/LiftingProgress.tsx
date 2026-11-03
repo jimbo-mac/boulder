@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { DateLineChart } from '../components/DateLineChart'
 import { cardClass, chipClass, inputClass, labelClass } from '../components/ui'
 import { formatShortDate, todayLocal } from '../lib/dates'
-import { listExercises, setsForExercise } from '../lib/db/lifts'
+import { listExercises, setsForExercise, type DatedSet } from '../lib/db/lifts'
+import type { Exercise } from '../lib/exercises'
 import { formatWeight } from '../lib/format'
-import { MAX_CONFIDENT_REPS, oneRepMaxByDay } from '../lib/metrics'
+import { MAX_CONFIDENT_REPS, oneRepMaxByDay, repsByDay } from '../lib/metrics'
 import { RANGES, rangeStart, type RangeValue } from '../lib/ranges'
 import { routeHref } from '../lib/router'
 import { useAsync } from '../lib/useAsync'
@@ -17,6 +18,10 @@ function Figure({ label, value, detail }: { label: string; value: string; detail
       {detail && <p className="text-xs text-stone-400 tabular-nums">{detail}</p>}
     </div>
   )
+}
+
+function signed(value: number, format: (n: number) => string): string {
+  return `${value >= 0 ? '+' : '−'}${format(Math.abs(value))}`
 }
 
 export function LiftingProgress() {
@@ -52,16 +57,6 @@ export function LiftingProgress() {
       </p>
     )
   }
-
-  const points = oneRepMaxByDay(sets.data ?? [])
-  const latest = points.at(-1)
-  const first = points[0]
-  const best = points.reduce<(typeof points)[number] | undefined>(
-    (top, p) => (!top || p.value > top.value ? p : top),
-    undefined,
-  )
-  const change = latest && first && points.length > 1 ? latest.value - first.value : null
-  const anyLowConfidence = points.some((p) => p.lowConfidence)
 
   return (
     <div className="flex flex-col gap-4">
@@ -106,56 +101,117 @@ export function LiftingProgress() {
       <section
         className={`${cardClass} flex flex-col gap-4 transition-opacity ${sets.loading ? 'opacity-50' : ''}`}
       >
-        <h2 className="font-semibold">Estimated 1-rep max</h2>
+        <h2 className="font-semibold">
+          {exercise.tracking === 'reps' ? 'Reps per set' : 'Estimated 1-rep max'}
+        </h2>
         {sets.data === undefined && !sets.error ? (
           <p className="py-10 text-center text-stone-400">Loading…</p>
-        ) : points.length === 0 ? (
-          <p className="py-10 text-center text-stone-400">
-            No working sets of {exercise.name} in this range yet.
-          </p>
+        ) : exercise.tracking === 'reps' ? (
+          <RepsTrend exercise={exercise} sets={sets.data ?? []} />
         ) : (
-          <>
-            <div className="grid grid-cols-3 gap-2 md:gap-4">
-              <Figure
-                label="Latest"
-                value={latest ? `${formatWeight(latest.value)} lb` : '–'}
-                detail={latest ? formatShortDate(latest.date) : undefined}
-              />
-              <Figure
-                label="Best"
-                value={best ? `${formatWeight(best.value)} lb` : '–'}
-                detail={best ? formatShortDate(best.date) : undefined}
-              />
-              <Figure
-                label="Change"
-                value={change === null ? '–' : `${change >= 0 ? '+' : '−'}${formatWeight(Math.abs(change))} lb`}
-              />
-            </div>
-            <DateLineChart
-              points={points.map((p) => ({ ...p, hollow: p.lowConfidence }))}
-              caption={`Estimated 1-rep max, ${exercise.name}`}
-              valueLabel="Estimated 1RM (lb)"
-              formatValue={(lb) => formatWeight(lb)}
-              tooltip={(p) => (
-                <>
-                  <p className="text-base font-semibold text-stone-100 tabular-nums">
-                    {formatWeight(p.value)} lb <span className="text-xs font-normal text-stone-400">est. 1RM</span>
-                  </p>
-                  <p className="text-xs text-stone-400 tabular-nums">
-                    {formatShortDate(p.date)} · best set {formatWeight(p.weightLb)} × {p.reps}
-                    {p.lowConfidence && ' (rough estimate)'}
-                  </p>
-                </>
-              )}
-            />
-            <p className="text-xs text-stone-500">
-              Best working set each day, estimated with the Epley formula.
-              {anyLowConfidence &&
-                ` Hollow dots are rough: that day's best set was over ${MAX_CONFIDENT_REPS} reps.`}
-            </p>
-          </>
+          <StrengthTrend exercise={exercise} sets={sets.data ?? []} />
         )}
       </section>
     </div>
+  )
+}
+
+function Empty({ exercise }: { exercise: Exercise }) {
+  return (
+    <p className="py-10 text-center text-stone-400">
+      No working sets of {exercise.name} in this range yet.
+    </p>
+  )
+}
+
+/** Weighted lifts: best estimated 1RM per day. */
+function StrengthTrend({ exercise, sets }: { exercise: Exercise; sets: DatedSet[] }) {
+  const points = oneRepMaxByDay(sets)
+  if (points.length === 0) return <Empty exercise={exercise} />
+
+  const latest = points.at(-1)
+  const first = points[0]
+  const best = points.reduce((top, p) => (p.value > top.value ? p : top))
+  const change = latest && first && points.length > 1 ? latest.value - first.value : null
+  const anyLowConfidence = points.some((p) => p.lowConfidence)
+
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
+        <Figure
+          label="Latest"
+          value={latest ? `${formatWeight(latest.value)} lb` : '–'}
+          detail={latest ? formatShortDate(latest.date) : undefined}
+        />
+        <Figure label="Best" value={`${formatWeight(best.value)} lb`} detail={formatShortDate(best.date)} />
+        <Figure label="Change" value={change === null ? '–' : `${signed(change, formatWeight)} lb`} />
+      </div>
+      <DateLineChart
+        points={points.map((p) => ({ ...p, hollow: p.lowConfidence }))}
+        caption={`Estimated 1-rep max, ${exercise.name}`}
+        valueLabel="Estimated 1RM (lb)"
+        formatValue={(lb) => formatWeight(lb)}
+        tooltip={(p) => (
+          <>
+            <p className="text-base font-semibold text-stone-100 tabular-nums">
+              {formatWeight(p.value)} lb <span className="text-xs font-normal text-stone-400">est. 1RM</span>
+            </p>
+            <p className="text-xs text-stone-400 tabular-nums">
+              {formatShortDate(p.date)} · best set {formatWeight(p.weightLb)} × {p.reps}
+              {p.lowConfidence && ' (rough estimate)'}
+            </p>
+          </>
+        )}
+      />
+      <p className="text-xs text-stone-500">
+        Best working set each day, estimated with the Epley formula.
+        {anyLowConfidence && ` Hollow dots are rough: that day's best set was over ${MAX_CONFIDENT_REPS} reps.`}
+      </p>
+    </>
+  )
+}
+
+/** Reps-only lifts (pull-ups): most reps in one set per day. */
+function RepsTrend({ exercise, sets }: { exercise: Exercise; sets: DatedSet[] }) {
+  const points = repsByDay(sets)
+  if (points.length === 0) return <Empty exercise={exercise} />
+
+  const latest = points.at(-1)
+  const first = points[0]
+  const best = points.reduce((top, p) => (p.bestSet > top.bestSet ? p : top))
+  const change = latest && first && points.length > 1 ? latest.bestSet - first.bestSet : null
+  const reps = (n: number) => `${n} ${n === 1 ? 'rep' : 'reps'}`
+
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
+        <Figure
+          label="Latest best set"
+          value={latest ? reps(latest.bestSet) : '–'}
+          detail={latest ? `${latest.totalReps} total · ${formatShortDate(latest.date)}` : undefined}
+        />
+        <Figure label="Best set" value={reps(best.bestSet)} detail={formatShortDate(best.date)} />
+        <Figure label="Change" value={change === null ? '–' : signed(change, (n) => String(n))} />
+      </div>
+      <DateLineChart
+        points={points.map((p) => ({ ...p, value: p.bestSet }))}
+        caption={`Most reps in a set, ${exercise.name}`}
+        valueLabel="Reps"
+        formatValue={(n) => String(Math.round(n))}
+        zeroBaseline
+        tooltip={(p) => (
+          <>
+            <p className="text-base font-semibold text-stone-100 tabular-nums">
+              {reps(p.bestSet)} <span className="text-xs font-normal text-stone-400">best set</span>
+            </p>
+            <p className="text-xs text-stone-400 tabular-nums">
+              {formatShortDate(p.date)} · {p.totalReps} total in {p.workingSets}{' '}
+              {p.workingSets === 1 ? 'set' : 'sets'}
+            </p>
+          </>
+        )}
+      />
+      <p className="text-xs text-stone-500">Most reps in a single working set each day.</p>
+    </>
   )
 }

@@ -44,18 +44,21 @@ export type Database = {
           category: string
           id: string
           name: string
+          tracking: string
           user_id: string
         }
         Insert: {
           category: string
           id?: string
           name: string
+          tracking?: string
           user_id?: string
         }
         Update: {
           category?: string
           id?: string
           name?: string
+          tracking?: string
           user_id?: string
         }
         Relationships: []

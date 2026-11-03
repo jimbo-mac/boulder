@@ -57,6 +57,7 @@ exercises                       -- user's lift catalog
   user_id       uuid
   name          text            -- e.g. "Back Squat"; unique per user
   category      'squat' | 'hinge' | 'push' | 'pull' | 'other'
+  tracking      'weight' | 'reps', default 'weight'  -- reps = reps only (pull-ups): no weight box, weight_lb stored as 0, progress = most reps in a set
 
 sets                            -- many per lift workout
   id            uuid, pk

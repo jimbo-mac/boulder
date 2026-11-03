@@ -17,8 +17,8 @@ import {
   type LiftDraft,
 } from './liftDraft'
 
-const squat = { id: 'ex-squat', name: 'Back Squat', category: 'squat' as const }
-const bench = { id: 'ex-bench', name: 'Bench Press', category: 'push' as const }
+const squat = { id: 'ex-squat', name: 'Back Squat', category: 'squat' as const, tracking: 'weight' as const }
+const bench = { id: 'ex-bench', name: 'Bench Press', category: 'push' as const, tracking: 'weight' as const }
 const TODAY = '2026-11-04'
 
 function draftWithSquat(): LiftDraft {
@@ -143,6 +143,35 @@ describe('checkDraft', () => {
 
   it('needs at least one set', () => {
     expect(checkDraft(draftWithSquat(), TODAY)).toEqual({ ok: false, problems: ['Add at least one set.'] })
+  })
+
+  it('saves reps-only exercises with weight 0 and needs only reps', () => {
+    const pullup = { id: 'ex-pu', name: 'Pull-up', category: 'pull' as const, tracking: 'reps' as const }
+    let draft = addExercise(emptyDraft(TODAY), pullup)
+    const block = firstBlock(draft)
+    draft = updateSet(draft, block.id, block.sets[0]!.id, { reps: '12' })
+    draft = repeatLastSet(draft, block.id)
+    draft = addBlankSet(draft, block.id) // blank: skipped
+    const trackingOf = (id: string): 'reps' | 'weight' => (id === 'ex-pu' ? 'reps' : 'weight')
+    expect(checkDraft(draft, TODAY, trackingOf)).toEqual({
+      ok: true,
+      exerciseCount: 1,
+      sets: [
+        { exerciseId: 'ex-pu', weightLb: 0, reps: 12, isWarmup: false },
+        { exerciseId: 'ex-pu', weightLb: 0, reps: 12, isWarmup: false },
+      ],
+    })
+  })
+
+  it('reports bad reps on reps-only exercises', () => {
+    const pullup = { id: 'ex-pu', name: 'Pull-up', category: 'pull' as const, tracking: 'reps' as const }
+    let draft = addExercise(emptyDraft(TODAY), pullup)
+    const block = firstBlock(draft)
+    draft = updateSet(draft, block.id, block.sets[0]!.id, { reps: '0' })
+    expect(checkDraft(draft, TODAY, () => 'reps')).toEqual({
+      ok: false,
+      problems: ['Pull-up, set 1: enter reps.'],
+    })
   })
 
   it('rejects future dates', () => {
