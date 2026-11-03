@@ -24,10 +24,4 @@ export function chipClass(selected: boolean): string {
   }`
 }
 
-export function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message
-  if (typeof err === 'object' && err !== null && 'message' in err) {
-    return String(err.message)
-  }
-  return 'Something went wrong. Try again.'
-}
+export { errorMessage } from '../lib/errors'

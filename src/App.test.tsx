@@ -15,6 +15,17 @@ vi.mock('./lib/db/auth', () => ({
   signOut: vi.fn(),
 }))
 
+vi.mock('./lib/db/settings', () => ({
+  EMPTY_SETTINGS: {},
+  getSettings: vi.fn().mockResolvedValue({
+    goalRaceName: null,
+    goalRaceDate: null,
+    goalDistanceMi: null,
+    goalTimeS: null,
+  }),
+  saveSettings: vi.fn(),
+}))
+
 vi.mock('./lib/db/runs', () => ({
   logRun: vi.fn(),
   listRuns: vi.fn().mockResolvedValue([]),

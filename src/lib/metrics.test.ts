@@ -1,5 +1,55 @@
 import { describe, expect, it } from 'vitest'
-import { pace, paceTrend, weeklyMileage } from './metrics'
+import { goalPace, pace, paceTrend, predictRaceTime, riegel, weeklyMileage } from './metrics'
+
+describe('riegel', () => {
+  it('returns the same time for the same distance', () => {
+    expect(riegel(1500, 3.1, 3.1)).toBe(1500)
+  })
+  it('scales by (D2/D1)^1.06', () => {
+    // 25:00 5K -> 10K: 1500 * 2^1.06 = 3127.5
+    expect(riegel(1500, 3.1, 6.2)).toBeCloseTo(1500 * 2 ** 1.06, 6)
+    expect(riegel(1500, 3.1, 6.2)).toBeCloseTo(3127.5, 0)
+  })
+  it('rejects zero and negative inputs', () => {
+    expect(() => riegel(0, 3.1, 6.2)).toThrow(RangeError)
+    expect(() => riegel(1500, 0, 6.2)).toThrow(RangeError)
+    expect(() => riegel(1500, 3.1, -1)).toThrow(RangeError)
+  })
+})
+
+describe('goalPace', () => {
+  it('is goal time over goal distance', () => {
+    expect(goalPace(6000, 13.1)).toBeCloseTo(458.02, 2) // 1:40 half -> 7:38/mi
+  })
+  it('rejects zero inputs', () => {
+    expect(() => goalPace(0, 13.1)).toThrow(RangeError)
+    expect(() => goalPace(6000, 0)).toThrow(RangeError)
+  })
+})
+
+describe('predictRaceTime', () => {
+  const runs = [
+    { date: '2026-10-01', distanceMi: 6, durationS: 3300 }, // 9:10/mi
+    { date: '2026-10-08', distanceMi: 4, durationS: 2000 }, // 8:20/mi, best effort
+    { date: '2026-10-10', distanceMi: 2, durationS: 840 }, // 7:00/mi but too short
+  ]
+
+  it('uses the run that predicts the fastest time', () => {
+    const prediction = predictRaceTime(runs, 13.1)
+    expect(prediction?.basedOn.date).toBe('2026-10-08')
+    expect(prediction?.timeS).toBeCloseTo(riegel(2000, 4, 13.1), 6)
+  })
+  it('ignores runs shorter than the minimum distance', () => {
+    expect(predictRaceTime([runs[2]!], 13.1)).toBeNull()
+    expect(predictRaceTime([runs[2]!], 13.1, 1)?.basedOn.date).toBe('2026-10-10')
+  })
+  it('returns null with no runs', () => {
+    expect(predictRaceTime([], 13.1)).toBeNull()
+  })
+  it('rejects a non-positive target', () => {
+    expect(() => predictRaceTime(runs, 0)).toThrow(RangeError)
+  })
+})
 
 describe('paceTrend', () => {
   // 1 mile runs make paces easy to read: durationS === pace.

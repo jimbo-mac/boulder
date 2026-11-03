@@ -41,6 +41,17 @@ export function durationDigitsToSeconds(digits: string): number | null {
   return total > 0 ? total : null
 }
 
+/** Inverse of durationDigitsToSeconds, for pre-filling a time field: 3900 → "10500". */
+export function secondsToDurationDigits(totalSeconds: number): string {
+  const rounded = Math.round(totalSeconds)
+  if (rounded <= 0) return ''
+  const h = Math.floor(rounded / 3600)
+  const m = Math.floor((rounded % 3600) / 60)
+  const s = rounded % 60
+  const digits = `${h}${String(m).padStart(2, '0')}${String(s).padStart(2, '0')}`
+  return cleanDurationDigits(digits)
+}
+
 /** 2730 → "45:30", 3900 → "1:05:00". Rounds to the nearest second. */
 export function formatDuration(totalSeconds: number): string {
   const rounded = Math.round(totalSeconds)

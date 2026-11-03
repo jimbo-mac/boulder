@@ -97,7 +97,7 @@ settings
 | Set volume | `weight × reps` (exclude warm-ups) |
 | Pace trend | per run type: each run's pace + trailing 5-run average (distance-weighted: Σtime ÷ Σdistance). Change in range = pace of first k runs − last k, k = min(5, ⌊n/2⌋); positive = faster |
 | Weekly mileage | sum of `distance_mi` per ISO week (Mon start) |
-| Race prediction (Riegel) | `T2 = T1 × (D2 / D1)^1.06` — there is no "race" run type, so slice 4 must decide which run supplies T1/D1 |
+| Race prediction (Riegel) | `T2 = T1 × (D2 / D1)^1.06` — T1/D1 come from the **best effort in the last 8 weeks**: the run of ≥ 3 mi (any type) whose prediction is fastest. Independent of the Progress range selector. |
 | Goal pace | `goal_time_s / goal_distance_mi` |
 
 Edge cases to test: zero/negative inputs rejected, reps > 12 flagged as low-confidence for 1RM, weeks with no workouts show as 0 (not missing).
@@ -119,7 +119,8 @@ Navigation: bottom tab bar on phones, top tabs on desktop; current screen lives 
    - Lifting tab: est. 1RM per exercise (line, exercise selector), weekly volume (bar), PR list
    - Time range selector: 4w / 12w / 6m / 1y / all
 3. **History** — reverse-chronological list; tap to edit/delete.
-4. **Settings** — goal race, sign out, export all data as JSON.
+4. **Settings** — goal race (optional name + date; distance via 5K / 10K / Half / Marathon presets or custom; goal time), sign out, export all data as JSON.
+   - Progress shows a goal card above the range selector: goal time + pace, predicted time + pace, gap, days to go, and which run the prediction used.
 
 ### PR detection
 A set is a PR if its est. 1RM exceeds every prior set for that exercise. A run is a PR if it's the fastest pace among runs within ±5% of its distance. PRs get a marker on charts.
@@ -131,7 +132,7 @@ A set is a PR if its est. 1RM exceeds every prior set for that exercise. A run i
 1. **Scaffold** — Vite/React/TS/Tailwind, Vitest, lint, Vercel deploy of a hello-world page.
 2. **Auth + DB** — Supabase project, schema migration, RLS, email-code sign-in.
 3. **Runs end-to-end** — log form → saved → History list → weekly mileage chart.
-4. **Run trends** — ~~pace chart~~ (done in slice 3), long-run chart, goal settings, goal-pace line, Riegel prediction.
+4. **Run trends** — pace chart (done in slice 3), long-run chart, goal settings, goal-pace line, Riegel prediction.
 5. **Lifts end-to-end** — exercise catalog, set logging, est. 1RM chart.
 6. **Lift trends** — weekly volume, PR detection + markers.
 7. **PWA + polish** — manifest, icons (the boulder), offline-friendly shell, edit/delete, JSON export.

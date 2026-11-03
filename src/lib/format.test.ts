@@ -8,6 +8,7 @@ import {
   formatPace,
   formatPaceChange,
   parseDistance,
+  secondsToDurationDigits,
 } from './format'
 
 describe('cleanDurationDigits', () => {
@@ -51,6 +52,19 @@ describe('durationDigitsToSeconds', () => {
     expect(durationDigitsToSeconds('0')).toBeNull()
     expect(durationDigitsToSeconds('')).toBeNull()
     expect(durationDigitsToSeconds('45:30')).toBeNull()
+  })
+})
+
+describe('secondsToDurationDigits', () => {
+  it('round-trips with durationDigitsToSeconds', () => {
+    for (const seconds of [5, 59, 2730, 3900, 6000, 12 * 3600 + 34 * 60 + 56]) {
+      expect(durationDigitsToSeconds(secondsToDurationDigits(seconds))).toBe(seconds)
+    }
+  })
+  it('produces the digits a user would type', () => {
+    expect(secondsToDurationDigits(2730)).toBe('4530')
+    expect(secondsToDurationDigits(3900)).toBe('10500')
+    expect(secondsToDurationDigits(0)).toBe('')
   })
 })
 

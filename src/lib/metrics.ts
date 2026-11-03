@@ -17,6 +17,50 @@ export function pace(durationS: number, distanceMi: number): number {
   return durationS / distanceMi
 }
 
+/** Riegel race-time prediction: T2 = T1 × (D2 / D1)^1.06. */
+export function riegel(t1S: number, d1Mi: number, d2Mi: number): number {
+  assertPositive('t1S', t1S)
+  assertPositive('d1Mi', d1Mi)
+  assertPositive('d2Mi', d2Mi)
+  return t1S * (d2Mi / d1Mi) ** 1.06
+}
+
+/** Pace needed to hit a goal time, seconds per mile. */
+export function goalPace(goalTimeS: number, goalDistanceMi: number): number {
+  return pace(goalTimeS, goalDistanceMi)
+}
+
+export interface Prediction {
+  timeS: number
+  basedOn: { date: ISODate; distanceMi: number; durationS: number }
+}
+
+/**
+ * Predict a race time from the best effort among `runs`: the run (of at least
+ * `minDistanceMi`) whose Riegel prediction for `targetMi` is fastest.
+ * Null if no run qualifies. Short runs are excluded because Riegel overstates
+ * fitness when extrapolating from them.
+ */
+export function predictRaceTime(
+  runs: readonly { date: ISODate; distanceMi: number; durationS: number }[],
+  targetMi: number,
+  minDistanceMi = 3,
+): Prediction | null {
+  assertPositive('targetMi', targetMi)
+  let best: Prediction | null = null
+  for (const run of runs) {
+    if (run.distanceMi < minDistanceMi) continue
+    const timeS = riegel(run.durationS, run.distanceMi, targetMi)
+    if (!best || timeS < best.timeS) {
+      best = {
+        timeS,
+        basedOn: { date: run.date, distanceMi: run.distanceMi, durationS: run.durationS },
+      }
+    }
+  }
+  return best
+}
+
 export interface PacePoint {
   date: ISODate
   /** This run's pace, seconds per mile. */

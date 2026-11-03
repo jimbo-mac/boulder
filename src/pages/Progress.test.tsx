@@ -1,10 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { runsBetween, type Run } from '../lib/db/runs'
+import { getSettings } from '../lib/db/settings'
 import type { PacePoint, WeeklyMileage } from '../lib/metrics'
 import { Progress } from './Progress'
 
 vi.mock('../lib/db/runs', () => ({ runsBetween: vi.fn() }))
+vi.mock('../lib/db/settings', () => ({ getSettings: vi.fn() }))
+vi.mock('../components/LongRunChart', () => ({
+  LongRunChart: ({ runs }: { runs: Run[] }) => (
+    <p data-testid="long-chart">{runs.map((r) => `${r.date}=${r.distanceMi}`).join(' ')}</p>
+  ),
+}))
 // Recharts needs real layout; render the data the chart receives instead.
 vi.mock('../components/WeeklyMileageChart', () => ({
   WeeklyMileageChart: ({ data }: { data: WeeklyMileage[] }) => (
@@ -21,11 +28,14 @@ vi.mock('../components/PaceTrendChart', () => ({
   ),
 }))
 const mockRunsBetween = vi.mocked(runsBetween)
+const mockGetSettings = vi.mocked(getSettings)
+const noGoal = { goalRaceName: null, goalRaceDate: null, goalDistanceMi: null, goalTimeS: null }
 
 describe('Progress (running)', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 10, 4, 12, 0)) // Wed Nov 4 2026
+    mockGetSettings.mockReset().mockResolvedValue(noGoal)
     mockRunsBetween.mockReset().mockResolvedValue([
       { workoutId: 'a', date: '2026-10-27', distanceMi: 4, durationS: 2000, kind: 'base' },
       { workoutId: 'b', date: '2026-11-02', distanceMi: 6, durationS: 3000, kind: 'long' },
@@ -112,6 +122,40 @@ describe('Progress (running)', () => {
       await screen.findByTestId('pace-chart')
       fireEvent.click(screen.getByRole('button', { name: 'Recovery' }))
       expect(screen.getByText('No recovery runs in this range yet.')).toBeInTheDocument()
+    })
+  })
+
+  it('charts only long runs in the long-run section', async () => {
+    render(<Progress />)
+    expect(await screen.findByTestId('long-chart')).toHaveTextContent('2026-11-02=6')
+    expect(screen.getByTestId('long-chart')).not.toHaveTextContent('2026-10-27')
+  })
+
+  describe('goal card', () => {
+    it('links to settings when no goal is set', async () => {
+      render(<Progress />)
+      expect(await screen.findByRole('link', { name: 'Set a goal race' })).toHaveAttribute(
+        'href',
+        '#/settings',
+      )
+    })
+
+    it('shows goal, prediction from the best recent effort, and the gap', async () => {
+      mockGetSettings.mockResolvedValue({
+        goalRaceName: 'Spring Half',
+        goalRaceDate: '2026-11-14',
+        goalDistanceMi: 13.11,
+        goalTimeS: 6000,
+      })
+      render(<Progress />)
+      expect(await screen.findByText('Spring Half')).toBeInTheDocument()
+      expect(screen.getByText(/10 days to go/)).toBeInTheDocument()
+      expect(screen.getByText('1:40:00')).toBeInTheDocument()
+      // Both runs are 8:20/mi; the 6 mi run extrapolates better, so it is the basis.
+      expect(await screen.findByText(/6\.00 mi on Nov 2/)).toBeInTheDocument()
+      expect(screen.getByText(/off goal/)).toBeInTheDocument()
+      // Prediction looks at the last 8 weeks regardless of the range selector.
+      expect(mockRunsBetween).toHaveBeenCalledWith('2026-09-10', '2026-11-04')
     })
   })
 

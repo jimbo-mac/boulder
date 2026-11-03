@@ -1,4 +1,13 @@
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { formatShortDate, fromDayNumber, toDayNumber } from '../lib/dates'
 import { formatPace } from '../lib/format'
 import type { PacePoint } from '../lib/metrics'
@@ -10,6 +19,7 @@ const DOT = 'rgba(57, 135, 229, 0.55)'
 const SURFACE = '#1c1917' // stone-900, ring around dots
 const GRID = '#292524'
 const AXIS_TEXT = '#a8a29e'
+const GOAL = '#d6d3d1' // stone-300: a neutral reference, not a data series
 
 interface Datum extends PacePoint {
   day: number
@@ -41,9 +51,19 @@ function TooltipBody({
 }
 
 /** Pace over time. Normal axis: lower is faster, so improvement trends down. */
-export function PaceTrendChart({ points, windowSize }: { points: PacePoint[]; windowSize: number }) {
+export function PaceTrendChart({
+  points,
+  windowSize,
+  goalPaceS = null,
+}: {
+  points: PacePoint[]
+  windowSize: number
+  /** Draws a reference line at goal pace when set. */
+  goalPaceS?: number | null
+}) {
   const data: Datum[] = points.map((p) => ({ ...p, day: toDayNumber(p.date) }))
   const values = points.flatMap((p) => [p.pace, p.avg])
+  if (goalPaceS !== null) values.push(goalPaceS)
   const ticks = paceTicks(Math.min(...values), Math.max(...values))
   const firstDay = data[0]?.day ?? 0
   const lastDay = data.at(-1)?.day ?? 0
@@ -52,7 +72,7 @@ export function PaceTrendChart({ points, windowSize }: { points: PacePoint[]; wi
 
   return (
     <>
-      <div className="mb-2 flex gap-4 text-xs text-stone-400" aria-hidden="true">
+      <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-400" aria-hidden="true">
         <span className="flex items-center gap-1.5">
           <svg width="10" height="10">
             <circle cx="5" cy="5" r="4" fill={DOT} />
@@ -65,6 +85,14 @@ export function PaceTrendChart({ points, windowSize }: { points: PacePoint[]; wi
           </svg>
           {windowSize}-run average
         </span>
+        {goalPaceS !== null && (
+          <span className="flex items-center gap-1.5">
+            <svg width="16" height="10">
+              <line x1="0" y1="5" x2="16" y2="5" stroke={GOAL} strokeWidth="1" />
+            </svg>
+            Goal {formatPace(goalPaceS)}
+          </span>
+        )}
         <span className="ml-auto">Lower = faster</span>
       </div>
 
@@ -97,6 +125,9 @@ export function PaceTrendChart({ points, windowSize }: { points: PacePoint[]; wi
               cursor={{ stroke: '#57534e', strokeWidth: 1 }}
               isAnimationActive={false}
             />
+            {goalPaceS !== null && (
+              <ReferenceLine y={goalPaceS} stroke={GOAL} strokeWidth={1} ifOverflow="extendDomain" />
+            )}
             <Line
               dataKey="pace"
               stroke="none"
