@@ -6,7 +6,8 @@ A lightweight personal web app for logging running and weightlifting workouts, b
 
 ## Goals
 
-- Logging a workout takes **under 30 seconds** on a phone.
+- Logging a workout takes **under 30 seconds** on a phone (logged mid-session at the gym).
+- The Progress dashboard works well on both phone and desktop.
 - Progress is obvious at a glance: every core metric has a trend chart.
 - Single user (me). No social features, no coaching, no plans.
 - Free to host and run.
@@ -27,7 +28,7 @@ A lightweight personal web app for logging running and weightlifting workouts, b
 | Frontend | Vite + React + TypeScript (strict) |
 | Styling | Tailwind CSS |
 | Charts | Recharts |
-| Data + auth | Supabase (Postgres + email magic-link auth) |
+| Data + auth | Supabase (Postgres + email one-time-code auth; sign-ups disabled) |
 | Tests | Vitest (+ React Testing Library for components) |
 | Hosting | Vercel (auto-deploy from `main`) |
 | Install | PWA (manifest + service worker) so it lives on my phone's home screen |
@@ -71,6 +72,10 @@ sets                            -- many per lift workout
 
 - Row-level security on every table: `user_id = auth.uid()` (child tables via their parent workout).
 - Units: miles and pounds stored as above; a settings toggle for km/kg is v2.
+
+### Auth decisions
+- Sign in by emailed one-time code (`signInWithOtp` + `verifyOtp`), not a magic link: a link opens in the phone browser, whose session isn't shared with the installed home-screen PWA on iOS.
+- Single user: sign-ups are disabled in Supabase and the app never creates accounts (`shouldCreateUser: false`). The one account was created in the Supabase dashboard.
 
 ### Settings (single row per user)
 
@@ -121,7 +126,7 @@ A set is a PR if its est. 1RM exceeds every prior set for that exercise. A run i
 ## Build order (vertical slices — each one deployable)
 
 1. **Scaffold** — Vite/React/TS/Tailwind, Vitest, lint, Vercel deploy of a hello-world page.
-2. **Auth + DB** — Supabase project, schema migration, RLS, magic-link sign-in.
+2. **Auth + DB** — Supabase project, schema migration, RLS, email-code sign-in.
 3. **Runs end-to-end** — log form → saved → History list → weekly mileage chart.
 4. **Run trends** — pace chart, long-run chart, goal settings, goal-pace line, Riegel prediction.
 5. **Lifts end-to-end** — exercise catalog, set logging, est. 1RM chart.

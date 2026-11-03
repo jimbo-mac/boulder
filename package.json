@@ -9,9 +9,12 @@
     "lint": "oxlint --deny-warnings",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:push": "npx supabase db push --remote",
+    "db:types": "npx supabase gen types typescript --remote > src/lib/db/types.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

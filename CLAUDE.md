@@ -10,6 +10,8 @@ Vite + React + TypeScript (strict), Tailwind v4 (via `@tailwindcss/vite`, no con
 - `npm test` — run Vitest once (`npm run test:watch` for watch mode)
 - `npm run lint` — oxlint (warnings fail; `any` is an error)
 - `npm run build` — type-check + production build (must pass before committing)
+- `npm run db:push` — apply new `supabase/migrations/` files to the remote project (`--dry-run` first)
+- `npm run db:types` — regenerate `src/lib/db/types.ts` after any schema change
 
 ## Project layout
 - `src/lib/metrics.ts` — all derived-metric math (pace, 1RM, volume, Riegel). Pure functions only, no React, no Supabase.
