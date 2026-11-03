@@ -31,6 +31,8 @@ export const SUGGESTED_EXERCISES: readonly { name: string; category: Category }[
   { name: 'Barbell Row', category: 'pull' },
   { name: 'Pull-up', category: 'pull' },
   { name: 'Lat Pulldown', category: 'pull' },
+  { name: 'Bicep Curl', category: 'pull' },
+  { name: 'Reverse Curl', category: 'pull' },
 ]
 
 /** Case- and whitespace-insensitive key, matching the DB's unique index on lower(name). */
@@ -40,6 +42,21 @@ export function nameKey(name: string): string {
 
 export function normalizeName(name: string): string {
   return name.trim().replace(/\s+/g, ' ')
+}
+
+/**
+ * Loose search key: letters and digits only, so "pullup", "pull up" and "Pull-up"
+ * all match. A trailing plural "s" is dropped so "pullups" and "curls" match too.
+ */
+export function searchKey(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+function matchesQuery(name: string, query: string): boolean {
+  const q = searchKey(query)
+  if (q === '') return true
+  const key = searchKey(name)
+  return key.includes(q) || (q.length > 3 && q.endsWith('s') && key.includes(q.slice(0, -1)))
 }
 
 export interface PickerOptions {
@@ -54,10 +71,10 @@ export function pickerOptions(catalog: readonly Exercise[], query: string): Pick
   const q = nameKey(query)
   const owned = new Set(catalog.map((e) => nameKey(e.name)))
   const matches = catalog
-    .filter((e) => q === '' || nameKey(e.name).includes(q))
+    .filter((e) => matchesQuery(e.name, query))
     .sort((a, b) => a.name.localeCompare(b.name))
   const suggestions = SUGGESTED_EXERCISES.filter(
-    (s) => !owned.has(nameKey(s.name)) && (q === '' || nameKey(s.name).includes(q)),
+    (s) => !owned.has(nameKey(s.name)) && matchesQuery(s.name, query),
   )
   const exact = owned.has(q) || suggestions.some((s) => nameKey(s.name) === q)
   return { matches, suggestions, canCreate: q !== '' && !exact }

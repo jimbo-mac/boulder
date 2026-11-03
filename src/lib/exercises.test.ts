@@ -28,6 +28,16 @@ describe('pickerOptions', () => {
     expect(options.suggestions.map((s) => s.name)).toEqual(['Back Squat', 'Front Squat'])
   })
 
+  it('ignores punctuation, spaces, and a plural s when searching', () => {
+    for (const query of ['pullup', 'pull up', 'Pull-ups', 'pullups']) {
+      expect(pickerOptions(catalog, query).suggestions.map((s) => s.name)).toContain('Pull-up')
+    }
+    expect(pickerOptions(catalog, 'curls').suggestions.map((s) => s.name)).toEqual([
+      'Bicep Curl',
+      'Reverse Curl',
+    ])
+  })
+
   it('offers create only for a new name', () => {
     expect(pickerOptions(catalog, 'Hip Thrust').canCreate).toBe(true)
     expect(pickerOptions(catalog, 'bench press ').canCreate).toBe(false)
