@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   addDays,
+  fromDayNumber,
   formatLongDate,
   formatShortDate,
   isValidISODate,
+  toDayNumber,
   todayLocal,
   weekStart,
 } from './dates'
@@ -59,6 +61,14 @@ describe('weekStart', () => {
   it('handles DST weeks', () => {
     expect(weekStart('2026-03-08')).toBe('2026-03-02') // Sun, DST start
     expect(weekStart('2026-11-01')).toBe('2026-10-26') // Sun, DST end
+  })
+})
+
+describe('toDayNumber / fromDayNumber', () => {
+  it('round-trips and steps one per day', () => {
+    expect(toDayNumber('1970-01-02')).toBe(1)
+    expect(fromDayNumber(toDayNumber('2026-11-03'))).toBe('2026-11-03')
+    expect(toDayNumber('2026-03-09') - toDayNumber('2026-03-08')).toBe(1)
   })
 })
 

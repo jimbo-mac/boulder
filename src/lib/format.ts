@@ -57,6 +57,17 @@ export function formatPace(secondsPerMile: number): string {
 }
 
 /**
+ * Pace improvement in seconds per mile (positive = faster) → "0:18 /mi faster".
+ * Rounds to whole seconds; null → "–".
+ */
+export function formatPaceChange(improvement: number | null): string {
+  if (improvement === null) return '–'
+  const rounded = Math.round(improvement)
+  if (rounded === 0) return 'No change'
+  return `${formatPace(Math.abs(rounded))} /mi ${rounded > 0 ? 'faster' : 'slower'}`
+}
+
+/**
  * Parse a distance in miles. Accepts "5", "5.25", ".5", and "5,25" (comma keyboards).
  * Must be > 0 and < 1000, with at most 2 decimals. Returns null if invalid.
  */

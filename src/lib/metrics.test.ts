@@ -1,5 +1,69 @@
 import { describe, expect, it } from 'vitest'
-import { pace, weeklyMileage } from './metrics'
+import { pace, paceTrend, weeklyMileage } from './metrics'
+
+describe('paceTrend', () => {
+  // 1 mile runs make paces easy to read: durationS === pace.
+  const mile = (date: string, durationS: number) => ({ date, distanceMi: 1, durationS })
+
+  it('returns nothing for no runs', () => {
+    expect(paceTrend([])).toEqual({ points: [], improvement: null })
+  })
+
+  it('has no improvement with a single run', () => {
+    expect(paceTrend([mile('2026-11-01', 600)])).toEqual({
+      points: [{ date: '2026-11-01', pace: 600, avg: 600 }],
+      improvement: null,
+    })
+  })
+
+  it('averages over a trailing window, partial at the start', () => {
+    const runs = [
+      mile('2026-11-01', 600),
+      mile('2026-11-02', 570),
+      mile('2026-11-03', 540),
+      mile('2026-11-04', 510),
+    ]
+    expect(paceTrend(runs, 3).points.map((p) => p.avg)).toEqual([600, 585, 570, 540])
+  })
+
+  it('weights the average by distance, not by run count', () => {
+    const runs = [
+      { date: '2026-11-01', distanceMi: 1, durationS: 600 }, // 10:00
+      { date: '2026-11-02', distanceMi: 9, durationS: 4500 }, // 8:20
+    ]
+    // (600 + 4500) / 10 = 510, not (600 + 500) / 2 = 550
+    expect(paceTrend(runs).points[1]?.avg).toBe(510)
+  })
+
+  it('reports improvement as first-k pace minus last-k pace (positive = faster)', () => {
+    const runs = [
+      mile('2026-10-01', 600),
+      mile('2026-10-02', 590),
+      mile('2026-10-03', 560),
+      mile('2026-10-04', 550),
+    ]
+    // k = min(5, 2) = 2: (600+590)/2 - (560+550)/2 = 40
+    expect(paceTrend(runs).improvement).toBe(40)
+  })
+
+  it('reports slowing down as negative improvement', () => {
+    const runs = [mile('2026-10-01', 500), mile('2026-10-02', 520)]
+    expect(paceTrend(runs).improvement).toBe(-20)
+  })
+
+  it('caps k at the window size', () => {
+    const paces = [700, 700, 600, 600, 600, 600, 600, 600, 500, 500]
+    const runs = paces.map((p, i) => mile(`2026-10-${String(i + 1).padStart(2, '0')}`, p))
+    // k = 2: (700+700)/2 - (500+500)/2 = 200
+    expect(paceTrend(runs, 2).improvement).toBe(200)
+  })
+
+  it('rejects unsorted runs, invalid runs, and bad windows', () => {
+    expect(() => paceTrend([mile('2026-11-02', 600), mile('2026-11-01', 600)])).toThrow(RangeError)
+    expect(() => paceTrend([mile('2026-11-01', 0)])).toThrow(RangeError)
+    expect(() => paceTrend([], 0)).toThrow(RangeError)
+  })
+})
 
 describe('pace', () => {
   it('is seconds per mile', () => {

@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { cardClass, chipClass, errorMessage } from '../components/ui'
+import { PaceTrendChart } from '../components/PaceTrendChart'
 import { WeeklyMileageChart } from '../components/WeeklyMileageChart'
 import { todayLocal, weekStart, type ISODate } from '../lib/dates'
 import { runsBetween, type Run } from '../lib/db/runs'
-import { weeklyMileage } from '../lib/metrics'
+import { formatPace, formatPaceChange } from '../lib/format'
+import { paceTrend, weeklyMileage } from '../lib/metrics'
 import { RANGES, rangeStart, type RangeValue } from '../lib/ranges'
+import { RUN_KINDS, runKindLabel, type RunKind } from '../lib/runKinds'
 
 type Tab = 'running' | 'lifting'
 
@@ -138,8 +141,62 @@ function RunningProgress() {
               <WeeklyMileageChart data={weeks} />
             )}
           </section>
+          <PaceSection runs={runs ?? []} />
         </div>
       )}
     </div>
+  )
+}
+
+/** Runs used for the trailing average and for the start-vs-end comparison. */
+const PACE_WINDOW = 5
+
+function PaceSection({ runs }: { runs: Run[] }) {
+  const [kind, setKind] = useState<RunKind>('base')
+  const ofKind = runs.filter((run) => run.kind === kind)
+  const trend = paceTrend(ofKind, PACE_WINDOW)
+  const current = trend.points.at(-1)?.avg
+
+  return (
+    <section className={`${cardClass} flex flex-col gap-4`}>
+      <h2 className="font-semibold">Pace</h2>
+      <div className="grid grid-cols-4 gap-2" role="group" aria-label="Run type">
+        {RUN_KINDS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={kind === option.value}
+            onClick={() => setKind(option.value)}
+            className={`${chipClass(kind === option.value)} px-1 text-sm`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {ofKind.length === 0 ? (
+        <p className="py-10 text-center text-stone-400">
+          No {runKindLabel(kind).toLowerCase()} runs in this range yet.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-2 md:gap-4">
+            <div>
+              <p className="text-xs text-stone-400">Current ({PACE_WINDOW}-run avg)</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums">
+                {current === undefined ? '–' : `${formatPace(current)} /mi`}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-stone-400">Change in range</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums">
+                {formatPaceChange(trend.improvement)}
+              </p>
+            </div>
+          </div>
+          <PaceTrendChart points={trend.points} windowSize={PACE_WINDOW} />
+        </>
+      )}
+    </section>
   )
 }

@@ -6,6 +6,7 @@ import {
   formatDurationDigits,
   formatMiles,
   formatPace,
+  formatPaceChange,
   parseDistance,
 } from './format'
 
@@ -62,6 +63,20 @@ describe('formatDuration / formatPace', () => {
   it('rounds to the nearest second without producing :60', () => {
     expect(formatPace(545.6)).toBe('9:06')
     expect(formatPace(599.6)).toBe('10:00')
+  })
+})
+
+describe('formatPaceChange', () => {
+  it('says faster or slower', () => {
+    expect(formatPaceChange(18)).toBe('0:18 /mi faster')
+    expect(formatPaceChange(-75)).toBe('1:15 /mi slower')
+  })
+  it('treats sub-second changes as no change', () => {
+    expect(formatPaceChange(0.4)).toBe('No change')
+    expect(formatPaceChange(-0.4)).toBe('No change')
+  })
+  it('shows a dash when there is nothing to compare', () => {
+    expect(formatPaceChange(null)).toBe('–')
   })
 })
 

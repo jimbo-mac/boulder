@@ -95,6 +95,7 @@ settings
 | Pace | `duration_s / distance_mi` → shown as `m:ss /mi` |
 | Estimated 1RM (Epley) | `weight × (1 + reps / 30)`; if `reps === 1`, return `weight` |
 | Set volume | `weight × reps` (exclude warm-ups) |
+| Pace trend | per run type: each run's pace + trailing 5-run average (distance-weighted: Σtime ÷ Σdistance). Change in range = pace of first k runs − last k, k = min(5, ⌊n/2⌋); positive = faster |
 | Weekly mileage | sum of `distance_mi` per ISO week (Mon start) |
 | Race prediction (Riegel) | `T2 = T1 × (D2 / D1)^1.06` — there is no "race" run type, so slice 4 must decide which run supplies T1/D1 |
 | Goal pace | `goal_time_s / goal_distance_mi` |
@@ -114,7 +115,7 @@ Navigation: bottom tab bar on phones, top tabs on desktop; current screen lives 
    - Duration is one numeric-keypad field that formats as you type (`4530` → `45:30`, `10500` → `1:05:00`); iOS numeric keypads have no colon.
    - Lift: date, then add exercises → add sets (weight × reps). "Repeat last set" button. Exercise picker with type-ahead + create new.
 2. **Progress** (default on desktop)
-   - Running tab: weekly mileage (bar), pace over time (line, filterable by run kind), long-run distance (line), goal-pace reference line + predicted race time card
+   - Running tab: weekly mileage (bar) with this-week / weekly-avg / total tiles; pace over time per run type (dots per run + 5-run average line, y-axis flipped so faster is up, "current" and "change in range" figures), long-run distance (line), goal-pace reference line + predicted race time card
    - Lifting tab: est. 1RM per exercise (line, exercise selector), weekly volume (bar), PR list
    - Time range selector: 4w / 12w / 6m / 1y / all
 3. **History** — reverse-chronological list; tap to edit/delete.
@@ -130,7 +131,7 @@ A set is a PR if its est. 1RM exceeds every prior set for that exercise. A run i
 1. **Scaffold** — Vite/React/TS/Tailwind, Vitest, lint, Vercel deploy of a hello-world page.
 2. **Auth + DB** — Supabase project, schema migration, RLS, email-code sign-in.
 3. **Runs end-to-end** — log form → saved → History list → weekly mileage chart.
-4. **Run trends** — pace chart, long-run chart, goal settings, goal-pace line, Riegel prediction.
+4. **Run trends** — ~~pace chart~~ (done in slice 3), long-run chart, goal settings, goal-pace line, Riegel prediction.
 5. **Lifts end-to-end** — exercise catalog, set logging, est. 1RM chart.
 6. **Lift trends** — weekly volume, PR detection + markers.
 7. **PWA + polish** — manifest, icons (the boulder), offline-friendly shell, edit/delete, JSON export.

@@ -48,6 +48,15 @@ export function weekStart(date: ISODate): ISODate {
   return fromUTCms(ms - daysSinceMonday * DAY_MS)
 }
 
+/** Days since 1970-01-01, for placing dates on a numeric chart axis. */
+export function toDayNumber(date: ISODate): number {
+  return Math.round(toUTCms(date) / DAY_MS)
+}
+
+export function fromDayNumber(day: number): ISODate {
+  return fromUTCms(Math.round(day) * DAY_MS)
+}
+
 /** "Nov 3" style label for chart axes. */
 export function formatShortDate(date: ISODate): string {
   return new Date(toUTCms(date)).toLocaleDateString('en-US', {
