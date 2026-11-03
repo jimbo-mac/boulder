@@ -3,14 +3,13 @@
 Personal workout tracker (running + weightlifting) focused on visualizing progress. **Read `SPEC.md` before starting any feature** — it is the source of truth for the data model, metrics, screens, and build order.
 
 ## Stack
-Vite + React + TypeScript (strict), Tailwind, Recharts, Supabase, Vitest, deployed on Vercel.
+Vite + React + TypeScript (strict), Tailwind v4 (via `@tailwindcss/vite`, no config file), Recharts, Supabase, Vitest + React Testing Library, oxlint, deployed on Vercel.
 
 ## Commands
-<!-- Fill these in once the scaffold exists -->
 - `npm run dev` — local dev server
-- `npm test` — run Vitest
-- `npm run lint` — lint
-- `npm run build` — production build (must pass before committing)
+- `npm test` — run Vitest once (`npm run test:watch` for watch mode)
+- `npm run lint` — oxlint (warnings fail; `any` is an error)
+- `npm run build` — type-check + production build (must pass before committing)
 
 ## Project layout
 - `src/lib/metrics.ts` — all derived-metric math (pace, 1RM, volume, Riegel). Pure functions only, no React, no Supabase.
