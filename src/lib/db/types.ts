@@ -62,27 +62,21 @@ export type Database = {
       }
       runs: {
         Row: {
-          avg_hr: number | null
           distance_mi: number
           duration_s: number
-          rpe: number | null
-          run_kind: string | null
+          run_kind: string
           workout_id: string
         }
         Insert: {
-          avg_hr?: number | null
           distance_mi: number
           duration_s: number
-          rpe?: number | null
-          run_kind?: string | null
+          run_kind: string
           workout_id: string
         }
         Update: {
-          avg_hr?: number | null
           distance_mi?: number
           duration_s?: number
-          rpe?: number | null
-          run_kind?: string | null
+          run_kind?: string
           workout_id?: string
         }
         Relationships: [
@@ -196,7 +190,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      log_run: {
+        Args: {
+          p_date: string
+          p_distance_mi: number
+          p_duration_s: number
+          p_run_kind: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

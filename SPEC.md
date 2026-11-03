@@ -50,9 +50,7 @@ runs                            -- one per run workout
   workout_id    uuid, pk, fk -> workouts (cascade delete)
   distance_mi   numeric(5,2)
   duration_s    integer         -- total seconds
-  run_kind      'easy' | 'long' | 'tempo' | 'intervals' | 'race', nullable
-  avg_hr        integer, nullable
-  rpe           integer 1–10, nullable
+  run_kind      'base' | 'long' | 'recovery' | 'speed'   -- required
 
 exercises                       -- user's lift catalog
   id            uuid, pk
@@ -98,7 +96,7 @@ settings
 | Estimated 1RM (Epley) | `weight × (1 + reps / 30)`; if `reps === 1`, return `weight` |
 | Set volume | `weight × reps` (exclude warm-ups) |
 | Weekly mileage | sum of `distance_mi` per ISO week (Mon start) |
-| Race prediction (Riegel) | `T2 = T1 × (D2 / D1)^1.06` |
+| Race prediction (Riegel) | `T2 = T1 × (D2 / D1)^1.06` — there is no "race" run type, so slice 4 must decide which run supplies T1/D1 |
 | Goal pace | `goal_time_s / goal_distance_mi` |
 
 Edge cases to test: zero/negative inputs rejected, reps > 12 flagged as low-confidence for 1RM, weeks with no workouts show as 0 (not missing).
@@ -107,9 +105,13 @@ Edge cases to test: zero/negative inputs rejected, reps > 12 flagged as low-conf
 
 ## Screens
 
+Navigation: bottom tab bar on phones, top tabs on desktop; current screen lives in the URL hash (`#/log`, `#/progress`, …) so back/forward work. No routing library.
+
+
 1. **Log** (default on mobile)
    - Toggle: Run / Lift
-   - Run: date (default today), distance, duration (`h:mm:ss` input), kind, optional HR/RPE/notes
+   - Run: date (default today), distance, duration, type (Base / Long / Recovery / Speed). Live average pace shown as you type. Kept deliberately minimal — no HR, RPE, or notes.
+   - Duration is one numeric-keypad field that formats as you type (`4530` → `45:30`, `10500` → `1:05:00`); iOS numeric keypads have no colon.
    - Lift: date, then add exercises → add sets (weight × reps). "Repeat last set" button. Exercise picker with type-ahead + create new.
 2. **Progress** (default on desktop)
    - Running tab: weekly mileage (bar), pace over time (line, filterable by run kind), long-run distance (line), goal-pace reference line + predicted race time card
