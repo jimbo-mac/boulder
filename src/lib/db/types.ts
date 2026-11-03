@@ -190,6 +190,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      log_lift: { Args: { p_date: string; p_sets: Json }; Returns: string }
       log_run: {
         Args: {
           p_date: string

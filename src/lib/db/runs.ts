@@ -58,16 +58,6 @@ function toRun(row: RunRow): Run {
   }
 }
 
-/** Newest first. `offset`/`limit` page through History. */
-export async function listRuns(offset: number, limit: number): Promise<Run[]> {
-  const { data, error } = await baseQuery()
-    .order('date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
-  if (error) throw error
-  return data.map(toRun)
-}
-
 /** Runs with `from <= date <= to`, oldest first. Omit `from` for all time. */
 export async function runsBetween(from: ISODate | null, to: ISODate): Promise<Run[]> {
   let query = baseQuery().lte('date', to)

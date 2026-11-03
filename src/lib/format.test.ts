@@ -7,6 +7,7 @@ import {
   formatMiles,
   formatPace,
   formatPaceChange,
+  formatWeight,
   parseDistance,
   secondsToDurationDigits,
 } from './format'
@@ -111,6 +112,14 @@ describe('parseDistance', () => {
     expect(parseDistance('1000')).toBeNull()
     expect(parseDistance('abc')).toBeNull()
     expect(parseDistance('')).toBeNull()
+  })
+})
+
+describe('formatWeight', () => {
+  it('rounds to whole pounds with separators', () => {
+    expect(formatWeight(262.5)).toBe('263')
+    expect(formatWeight(1350)).toBe('1,350')
+    expect(formatWeight(0)).toBe('0')
   })
 })
 

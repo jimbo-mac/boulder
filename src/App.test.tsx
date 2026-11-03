@@ -28,8 +28,16 @@ vi.mock('./lib/db/settings', () => ({
 
 vi.mock('./lib/db/runs', () => ({
   logRun: vi.fn(),
-  listRuns: vi.fn().mockResolvedValue([]),
   runsBetween: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock('./lib/db/history', () => ({ listHistory: vi.fn().mockResolvedValue([]) }))
+
+vi.mock('./lib/db/lifts', () => ({
+  listExercises: vi.fn().mockResolvedValue([]),
+  createExercise: vi.fn(),
+  logLift: vi.fn(),
+  setsForExercise: vi.fn().mockResolvedValue([]),
 }))
 
 const fakeSession = { user: { email: 'me@example.com' } } as Session

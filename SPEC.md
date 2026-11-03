@@ -93,7 +93,7 @@ settings
 | Metric | Formula |
 |---|---|
 | Pace | `duration_s / distance_mi` → shown as `m:ss /mi` |
-| Estimated 1RM (Epley) | `weight × (1 + reps / 30)`; if `reps === 1`, return `weight` |
+| Estimated 1RM (Epley) | `weight × (1 + reps / 30)`; if `reps === 1`, return `weight`. Chart point per day = best working set (warm-ups and 0 lb bodyweight sets excluded); a confident estimate (≤ 12 reps) beats a higher low-confidence one, which is drawn hollow |
 | Set volume | `weight × reps` (exclude warm-ups) |
 | Pace trend | per run type: each run's pace + trailing 5-run average (distance-weighted: Σtime ÷ Σdistance). Change in range = pace of first k runs − last k, k = min(5, ⌊n/2⌋); positive = faster |
 | Weekly mileage | sum of `distance_mi` per ISO week (Mon start) |
@@ -113,12 +113,13 @@ Navigation: bottom tab bar on phones, top tabs on desktop; current screen lives 
    - Toggle: Run / Lift
    - Run: date (default today), distance, duration, type (Base / Long / Recovery / Speed). Live average pace shown as you type. Kept deliberately minimal — no HR, RPE, or notes.
    - Duration is one numeric-keypad field that formats as you type (`4530` → `45:30`, `10500` → `1:05:00`); iOS numeric keypads have no colon.
-   - Lift: date, then add exercises → add sets (weight × reps). "Repeat last set" button. Exercise picker with type-ahead + create new.
+   - Lift: date, then add exercises → add sets (weight × reps, warm-up toggle). "Repeat last set" (copies weight/reps/warm-up) and "+ Empty set" buttons. Exercise picker with type-ahead, common-lift suggestions until added, and create new (pick a category). Bodyweight = 0 lb.
+   - The in-progress lift workout is saved to the device (localStorage) after every change, so closing the tab mid-workout loses nothing; Log reopens on Lift when a draft exists. Saving uses `log_lift()` (workout + all sets in one transaction). Fully blank set rows are skipped; half-filled rows block saving with a message.
 2. **Progress** (default on desktop)
    - Running tab: weekly mileage (bar) with this-week / weekly-avg / total tiles; pace over time per run type (dots per run + 5-run average line, normal y-axis (lower = faster), "current" and "change in range" figures), long-run distance (line), goal-pace reference line + predicted race time card
    - Lifting tab: est. 1RM per exercise (line, exercise selector), weekly volume (bar), PR list
    - Time range selector: 4w / 12w / 6m / 1y / all
-3. **History** — reverse-chronological list; tap to edit/delete.
+3. **History** — reverse-chronological list of runs and lifts (lifts show exercises, working sets, volume); tap to edit/delete (slice 7).
 4. **Settings** — goal race (optional name + date; distance via 5K / 10K / Half / Marathon presets or custom; goal time), sign out, export all data as JSON.
    - Progress shows a goal card above the range selector: goal time + pace, predicted time + pace, gap, days to go, and which run the prediction used.
 

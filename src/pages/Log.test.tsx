@@ -4,6 +4,7 @@ import { logRun } from '../lib/db/runs'
 import { Log } from './Log'
 
 vi.mock('../lib/db/runs', () => ({ logRun: vi.fn() }))
+vi.mock('../lib/db/lifts', () => ({ listExercises: vi.fn(), createExercise: vi.fn(), logLift: vi.fn() }))
 const mockLogRun = vi.mocked(logRun)
 
 function fill({ distance, time }: { distance?: string; time?: string }) {

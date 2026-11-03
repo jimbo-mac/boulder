@@ -89,6 +89,11 @@ export function parseDistance(input: string): number | null {
   return value > 0 ? value : null
 }
 
+/** Pounds for display: whole numbers with thousands separators (262.5 → "263", 1350 → "1,350"). */
+export function formatWeight(lb: number): string {
+  return Math.round(lb).toLocaleString('en-US')
+}
+
 /** 5 → "5.00", 13.1 → "13.10". */
 export function formatMiles(miles: number): string {
   return miles.toFixed(2)

@@ -12,20 +12,35 @@ import {
   parseDistance,
 } from '../lib/format'
 import { pace } from '../lib/metrics'
+import { loadDraft } from '../lib/liftDraft'
 import { RUN_KINDS, runKindLabel, type RunKind } from '../lib/runKinds'
+import { LiftForm } from './LiftForm'
 
 export function Log() {
+  // Reopen on Lift if a lift workout is in progress.
+  const [mode, setMode] = useState<'run' | 'lift'>(() => (loadDraft() ? 'lift' : 'run'))
+
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6">
       <div className="grid grid-cols-2 gap-2" role="group" aria-label="Workout type">
-        <button type="button" aria-pressed="true" className={chipClass(true)}>
+        <button
+          type="button"
+          aria-pressed={mode === 'run'}
+          onClick={() => setMode('run')}
+          className={chipClass(mode === 'run')}
+        >
           Run
         </button>
-        <button type="button" disabled className={`${chipClass(false)} opacity-40`}>
-          Lift <span className="text-xs">(soon)</span>
+        <button
+          type="button"
+          aria-pressed={mode === 'lift'}
+          onClick={() => setMode('lift')}
+          className={chipClass(mode === 'lift')}
+        >
+          Lift
         </button>
       </div>
-      <RunForm />
+      {mode === 'run' ? <RunForm /> : <LiftForm />}
     </div>
   )
 }

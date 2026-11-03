@@ -117,6 +117,84 @@ export function paceTrend(
   return { points, improvement }
 }
 
+// --- Lifting -----------------------------------------------------------------
+
+/** Above this many reps, a 1RM estimate is unreliable and is flagged. */
+export const MAX_CONFIDENT_REPS = 12
+
+export interface OneRepMax {
+  value: number
+  lowConfidence: boolean
+}
+
+/** Estimated 1RM (Epley): weight × (1 + reps / 30); a single rep is just the weight. */
+export function estimate1RM(weightLb: number, reps: number): OneRepMax {
+  assertPositive('weightLb', weightLb)
+  if (!Number.isInteger(reps) || reps < 1) throw new RangeError(`reps must be a positive integer, got ${reps}`)
+  return {
+    value: reps === 1 ? weightLb : weightLb * (1 + reps / 30),
+    lowConfidence: reps > MAX_CONFIDENT_REPS,
+  }
+}
+
+export interface LiftSet {
+  weightLb: number
+  reps: number
+  isWarmup: boolean
+}
+
+/** Weight × reps; warm-ups count as 0. */
+export function setVolume(set: LiftSet): number {
+  if (!Number.isFinite(set.weightLb) || set.weightLb < 0) {
+    throw new RangeError(`weightLb must be >= 0, got ${set.weightLb}`)
+  }
+  if (!Number.isInteger(set.reps) || set.reps < 1) throw new RangeError(`reps must be a positive integer`)
+  return set.isWarmup ? 0 : set.weightLb * set.reps
+}
+
+export function totalVolume(sets: readonly LiftSet[]): number {
+  return sets.reduce((sum, set) => sum + setVolume(set), 0)
+}
+
+export interface OneRepMaxPoint {
+  date: ISODate
+  /** Best estimated 1RM that day. */
+  value: number
+  /** The set that produced it. */
+  weightLb: number
+  reps: number
+  lowConfidence: boolean
+}
+
+/**
+ * Best estimated 1RM per day for one exercise, oldest first. Warm-ups and
+ * bodyweight (0 lb) sets are ignored. A low-confidence estimate (reps > 12) is
+ * only used for a day when that day has no confident one.
+ */
+export function oneRepMaxByDay(
+  sets: readonly (LiftSet & { date: ISODate })[],
+): OneRepMaxPoint[] {
+  const best = new Map<ISODate, OneRepMaxPoint>()
+  for (const set of sets) {
+    if (set.isWarmup || set.weightLb <= 0) continue
+    const estimate = estimate1RM(set.weightLb, set.reps)
+    const point: OneRepMaxPoint = {
+      date: set.date,
+      value: estimate.value,
+      weightLb: set.weightLb,
+      reps: set.reps,
+      lowConfidence: estimate.lowConfidence,
+    }
+    const current = best.get(set.date)
+    const better =
+      !current ||
+      (current.lowConfidence && !point.lowConfidence) ||
+      (current.lowConfidence === point.lowConfidence && point.value > current.value)
+    if (better) best.set(set.date, point)
+  }
+  return [...best.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+}
+
 export interface WeeklyMileage {
   /** Monday that starts the week. */
   weekStart: ISODate

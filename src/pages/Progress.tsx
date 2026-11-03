@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { chipClass } from '../components/ui'
+import { LiftingProgress } from './LiftingProgress'
 import { RunningProgress } from './RunningProgress'
 
 type Tab = 'running' | 'lifting'
@@ -27,11 +28,7 @@ export function Progress() {
           Lifting
         </button>
       </div>
-      {tab === 'running' ? (
-        <RunningProgress />
-      ) : (
-        <p className="text-stone-400">Lifting charts are coming soon.</p>
-      )}
+      {tab === 'running' ? <RunningProgress /> : <LiftingProgress />}
     </div>
   )
 }
