@@ -115,7 +115,7 @@ Navigation: bottom tab bar on phones, top tabs on desktop; current screen lives 
    - Duration is one numeric-keypad field that formats as you type (`4530` → `45:30`, `10500` → `1:05:00`); iOS numeric keypads have no colon.
    - Lift: date, then add exercises → add sets (weight × reps). "Repeat last set" button. Exercise picker with type-ahead + create new.
 2. **Progress** (default on desktop)
-   - Running tab: weekly mileage (bar) with this-week / weekly-avg / total tiles; pace over time per run type (dots per run + 5-run average line, y-axis flipped so faster is up, "current" and "change in range" figures), long-run distance (line), goal-pace reference line + predicted race time card
+   - Running tab: weekly mileage (bar) with this-week / weekly-avg / total tiles; pace over time per run type (dots per run + 5-run average line, normal y-axis (lower = faster), "current" and "change in range" figures), long-run distance (line), goal-pace reference line + predicted race time card
    - Lifting tab: est. 1RM per exercise (line, exercise selector), weekly volume (bar), PR list
    - Time range selector: 4w / 12w / 6m / 1y / all
 3. **History** — reverse-chronological list; tap to edit/delete.

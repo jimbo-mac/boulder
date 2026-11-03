@@ -40,7 +40,7 @@ function TooltipBody({
   )
 }
 
-/** Pace over time; the axis is flipped so faster (lower pace) is higher. */
+/** Pace over time. Normal axis: lower is faster, so improvement trends down. */
 export function PaceTrendChart({ points, windowSize }: { points: PacePoint[]; windowSize: number }) {
   const data: Datum[] = points.map((p) => ({ ...p, day: toDayNumber(p.date) }))
   const values = points.flatMap((p) => [p.pace, p.avg])
@@ -65,7 +65,7 @@ export function PaceTrendChart({ points, windowSize }: { points: PacePoint[]; wi
           </svg>
           {windowSize}-run average
         </span>
-        <span className="ml-auto">Faster ↑</span>
+        <span className="ml-auto">Lower = faster</span>
       </div>
 
       <div className="h-56 w-full md:h-72">
@@ -84,7 +84,6 @@ export function PaceTrendChart({ points, windowSize }: { points: PacePoint[]; wi
               allowDecimals={false}
             />
             <YAxis
-              reversed
               domain={[ticks[0] ?? 'auto', ticks.at(-1) ?? 'auto']}
               ticks={ticks}
               tickFormatter={(s: number) => formatPace(s)}
