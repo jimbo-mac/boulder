@@ -175,7 +175,7 @@ function GoalForm({ initial }: { initial: SettingsData }) {
               type="button"
               aria-pressed={choice === race.value}
               onClick={() => setChoice(choice === race.value ? null : race.value)}
-              className={`${chipClass(choice === race.value)} px-1 text-sm`}
+              className={chipClass(choice === race.value, 'compact')}
             >
               {race.label}
             </button>
@@ -184,7 +184,7 @@ function GoalForm({ initial }: { initial: SettingsData }) {
             type="button"
             aria-pressed={choice === 'custom'}
             onClick={() => setChoice(choice === 'custom' ? null : 'custom')}
-            className={`${chipClass(choice === 'custom')} px-1 text-sm`}
+            className={chipClass(choice === 'custom', 'compact')}
           >
             Other
           </button>

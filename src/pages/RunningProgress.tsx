@@ -225,7 +225,7 @@ function PaceSection({
             type="button"
             aria-pressed={kind === option.value}
             onClick={() => setKind(option.value)}
-            className={`${chipClass(kind === option.value)} px-1 text-sm`}
+            className={chipClass(kind === option.value, 'compact')}
           >
             {option.label}
           </button>

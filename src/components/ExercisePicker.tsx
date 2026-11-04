@@ -100,7 +100,7 @@ export function ExercisePicker({
               type="button"
               aria-pressed={tracking === 'weight'}
               onClick={() => setTracking('weight')}
-              className={`${chipClass(tracking === 'weight')} text-sm`}
+              className={chipClass(tracking === 'weight', 'compact')}
             >
               Weight × reps
             </button>
@@ -108,7 +108,7 @@ export function ExercisePicker({
               type="button"
               aria-pressed={tracking === 'reps'}
               onClick={() => setTracking('reps')}
-              className={`${chipClass(tracking === 'reps')} text-sm`}
+              className={chipClass(tracking === 'reps', 'compact')}
             >
               Reps only
             </button>

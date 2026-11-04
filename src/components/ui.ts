@@ -15,9 +15,14 @@ export const labelClass = 'text-sm font-medium text-stone-300'
 
 export const cardClass = 'rounded-xl border border-stone-800 bg-stone-900 p-4'
 
-/** Segmented control / chip: pass `selected` to style the active one. */
-export function chipClass(selected: boolean): string {
-  return `h-11 rounded-lg px-3 text-base font-medium transition-colors ${
+/**
+ * Segmented control / chip: pass `selected` to style the active one.
+ * Use `compact` for tight rows (4 across on a phone) instead of appending
+ * px-/text- classes: two classes for one property don't override reliably.
+ */
+export function chipClass(selected: boolean, size: 'normal' | 'compact' = 'normal'): string {
+  const sizing = size === 'compact' ? 'px-1 text-sm' : 'px-3 text-base'
+  return `h-11 min-w-0 rounded-lg ${sizing} font-medium whitespace-nowrap transition-colors ${
     selected
       ? 'bg-stone-100 text-stone-950'
       : 'border border-stone-700 text-stone-300 active:bg-stone-800'
