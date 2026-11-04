@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, addMonths, formatLongDate, formatMonth, formatShortDate, fromDayNumber, isValidISODate, monthGrid, monthStart, toDayNumber, todayLocal, weekStart } from './dates'
+import { addDays, addMonths, formatLongDate, formatMonth, formatShortMonth, formatShortDate, fromDayNumber, isValidISODate, monthGrid, monthStart, toDayNumber, todayLocal, weekStart } from './dates'
 
 describe('isValidISODate', () => {
   it('accepts real days', () => {
@@ -83,6 +83,8 @@ describe('months', () => {
   })
   it('formats the month name', () => {
     expect(formatMonth('2026-11-04')).toBe('November 2026')
+    expect(formatShortMonth('2026-11-04')).toBe('Nov')
+    expect(formatShortMonth('2027-01-01')).toBe('Jan')
   })
 })
 

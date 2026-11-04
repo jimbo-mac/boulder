@@ -112,3 +112,8 @@ export function formatMonth(date: ISODate): string {
     timeZone: 'UTC',
   })
 }
+
+/** "Nov". */
+export function formatShortMonth(date: ISODate): string {
+  return new Date(toUTCms(date)).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+}

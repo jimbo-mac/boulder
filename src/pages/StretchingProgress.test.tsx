@@ -82,6 +82,22 @@ describe('StretchingProgress', () => {
     expect(within(card('General')).getAllByRole('row')).toHaveLength(14) // header + 13 weeks
   })
 
+  it('labels the grid with each month once and the day each week starts', async () => {
+    render(<StretchingProgress />)
+    await screen.findByRole('heading', { name: 'Posture' })
+    const header = (name: string) => {
+      const grid = card(name).querySelector('[aria-hidden="true"].grid') as HTMLElement
+      return [...grid.children].slice(0, 12).map((el) => el.textContent)
+    }
+    // 1m: Oct 12, 19, 26 and Nov 2 → "Oct" spans 3 weeks, "Nov" 1.
+    expect(header('Posture').slice(0, 3)).toEqual(['', 'Oct', 'Nov'])
+    expect(header('Posture').slice(3, 8)).toEqual(['', '12', '19', '26', '2'])
+
+    fireEvent.click(screen.getByRole('button', { name: '3m' }))
+    // Aug 10 → Nov 2: Aug, Sep, Oct, Nov, each named once.
+    expect(header('Posture').slice(0, 5)).toEqual(['', 'Aug', 'Sep', 'Oct', 'Nov'])
+  })
+
   it('shows an error if loading fails', async () => {
     mockChecks.mockRejectedValue(new Error('offline'))
     render(<StretchingProgress />)
