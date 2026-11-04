@@ -1,15 +1,18 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { runsBetween, type Run } from '../lib/db/runs'
 import { getSettings } from '../lib/db/settings'
-import type { PacePoint, WeeklyMileage } from '../lib/metrics'
+import type { PaceChartPoint } from '../components/PaceTrendChart'
+import type { WeeklyMileage } from '../lib/metrics'
 import { Progress } from './Progress'
 
 vi.mock('../lib/db/runs', () => ({ runsBetween: vi.fn() }))
 vi.mock('../lib/db/settings', () => ({ getSettings: vi.fn() }))
 vi.mock('../components/LongRunChart', () => ({
-  LongRunChart: ({ runs }: { runs: Run[] }) => (
-    <p data-testid="long-chart">{runs.map((r) => `${r.date}=${r.distanceMi}`).join(' ')}</p>
+  LongRunChart: ({ runs, prIds }: { runs: Run[]; prIds?: ReadonlySet<string> }) => (
+    <p data-testid="long-chart">
+      {runs.map((r) => `${r.date}=${r.distanceMi}${prIds?.has(r.workoutId) ? '(PR)' : ''}`).join(' ')}
+    </p>
   ),
 }))
 // Recharts needs real layout; render the data the chart receives instead.
@@ -23,8 +26,8 @@ vi.mock('../components/WeeklyMileageChart', () => ({
   ),
 }))
 vi.mock('../components/PaceTrendChart', () => ({
-  PaceTrendChart: ({ points }: { points: PacePoint[] }) => (
-    <p data-testid="pace-chart">{points.map((p) => `${p.date}@${p.pace}`).join(' ')}</p>
+  PaceTrendChart: ({ points }: { points: PaceChartPoint[] }) => (
+    <p data-testid="pace-chart">{points.map((p) => `${p.date}@${p.pace}${p.pr ? '(PR)' : ''}`).join(' ')}</p>
   ),
 }))
 const mockRunsBetween = vi.mocked(runsBetween)
@@ -101,7 +104,7 @@ describe('Progress (running)', () => {
     it('defaults to Base runs and shows the improvement', async () => {
       render(<Progress />)
       expect(await screen.findByTestId('pace-chart')).toHaveTextContent(
-        '2026-10-20@600 2026-10-27@580 2026-11-03@560 2026-11-04@550',
+        '2026-10-20@600 2026-10-27@580(PR) 2026-11-03@560(PR) 2026-11-04@550(PR)',
       )
       // first 2 avg 590, last 2 avg 555 -> 35s faster
       expect(screen.getByText('0:35 /mi faster')).toBeInTheDocument()
@@ -122,6 +125,48 @@ describe('Progress (running)', () => {
       await screen.findByTestId('pace-chart')
       fireEvent.click(screen.getByRole('button', { name: 'Recovery' }))
       expect(screen.getByText('No recovery runs in this range yet.')).toBeInTheDocument()
+    })
+  })
+
+  describe('run PRs', () => {
+    const run = (id: string, date: string, distanceMi: number, durationS: number, kind: Run['kind']): Run => ({
+      workoutId: id,
+      date,
+      distanceMi,
+      durationS,
+      kind,
+    })
+
+    it('marks long-run distance PRs and lists recent PRs newest first', async () => {
+      mockRunsBetween.mockResolvedValue([
+        run('l1', '2026-10-04', 8, 4800, 'long'),
+        run('b1', '2026-10-06', 5, 2700, 'base'), // 9:00 baseline
+        run('l2', '2026-10-11', 10, 6000, 'long'), // PR +2
+        run('b2', '2026-10-13', 5.1, 2652, 'base'), // 8:40, PR
+        run('l3', '2026-10-18', 9, 5400, 'long'),
+      ])
+      render(<Progress />)
+      expect(await screen.findByTestId('long-chart')).toHaveTextContent('2026-10-04=8 2026-10-11=10(PR) 2026-10-18=9')
+      const heading = screen.getByRole('heading', { name: 'Recent PRs' })
+      const items = within(heading.closest('section') as HTMLElement).getAllByRole('listitem')
+      expect(items).toHaveLength(2)
+      expect(items[0]).toHaveTextContent('Base · fastest')
+      expect(items[0]).toHaveTextContent('8:40 /mi')
+      expect(items[0]).toHaveTextContent('5.10 mi · 0:20 faster')
+      expect(items[1]).toHaveTextContent('Long · longest')
+      expect(items[1]).toHaveTextContent('10.00 mi')
+      expect(items[1]).toHaveTextContent('+2.00 mi')
+    })
+
+    it('judges PRs against all runs, not just the visible range', async () => {
+      const old = run('old', '2026-03-01', 12, 7200, 'long')
+      const recent = [run('l1', '2026-10-04', 8, 4800, 'long'), run('l2', '2026-10-11', 10, 6000, 'long')]
+      mockRunsBetween.mockImplementation((from) => Promise.resolve(from === null ? [old, ...recent] : recent))
+      render(<Progress />)
+      await vi.waitFor(() => expect(mockRunsBetween).toHaveBeenCalledWith(null, '2026-11-04'))
+      expect(await screen.findByTestId('long-chart')).toHaveTextContent('2026-10-04=8 2026-10-11=10')
+      expect(screen.getByTestId('long-chart')).not.toHaveTextContent('(PR)')
+      expect(screen.getByText(/No PRs in this range yet/)).toBeInTheDocument()
     })
   })
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { goalPace, pace, paceTrend, predictRaceTime, riegel, weeklyMileage } from './metrics'
+import { goalPace, pace, paceTrend, predictRaceTime, riegel, runPRs, weeklyMileage, type RunPRInput } from './metrics'
 
 describe('riegel', () => {
   it('returns the same time for the same distance', () => {
@@ -200,5 +200,65 @@ describe('weeklyMileage', () => {
     expect(() =>
       weeklyMileage([{ date: '2026-11-02', distanceMi: 0 }], '2026-11-02', '2026-11-02'),
     ).toThrow(RangeError)
+  })
+})
+
+describe('runPRs', () => {
+  let n = 0
+  const run = (date: string, kind: RunPRInput['kind'], distanceMi: number, durationS: number): RunPRInput => {
+    n += 1
+    return { workoutId: `r${n}`, date, kind, distanceMi, durationS }
+  }
+
+  it('long runs: a PR is a new longest distance; the first long run is a baseline', () => {
+    const runs = [
+      run('2026-10-04', 'long', 8, 4800),
+      run('2026-10-11', 'long', 8, 4700), // tie on distance
+      run('2026-10-18', 'long', 10, 6000), // PR
+      run('2026-10-25', 'long', 9, 5000),
+      run('2026-10-26', 'base', 12, 6000), // a longer base run doesn't count against long runs
+      run('2026-11-01', 'long', 11, 6600), // PR
+    ]
+    expect(runPRs(runs).map((p) => [p.run.date, p.measure, p.value, p.previousBest])).toEqual([
+      ['2026-10-18', 'distance', 10, 8],
+      ['2026-11-01', 'distance', 11, 10],
+    ])
+  })
+
+  it('other runs: fastest pace among earlier same-type runs within ±5% of the distance', () => {
+    const runs = [
+      run('2026-10-01', 'base', 5, 2700), // 9:00 baseline
+      run('2026-10-03', 'base', 5.2, 2756), // 8:50, within 5% → PR
+      run('2026-10-05', 'base', 3, 1500), // 8:20, but no earlier ~3 mi run → baseline
+      run('2026-10-07', 'base', 5, 2650), // 8:50 tie → not a PR
+      run('2026-10-09', 'speed', 5, 2400), // 8:00, first speed run → baseline
+      run('2026-10-11', 'base', 4.76, 2380), // 8:20, but 5 mi is 0.24 away, just over 5% of 4.76 (0.238) → baseline
+    ]
+    const prs = runPRs(runs)
+    expect(prs.map((p) => [p.run.date, p.measure])).toEqual([['2026-10-03', 'pace']])
+    expect(prs[0]?.value).toBeCloseTo(530, 6)
+    expect(prs[0]?.previousBest).toBeCloseTo(540, 6)
+  })
+
+  it('compares distance tolerance against the new run, inclusive at exactly 5%', () => {
+    const runs = [run('2026-10-01', 'recovery', 4, 2400), run('2026-10-02', 'recovery', 4.2, 2400)]
+    // |4.2 − 4| = 0.2 ≤ 5% of 4.2 = 0.21 → comparable, and faster → PR
+    expect(runPRs(runs).map((p) => p.run.workoutId)).toEqual([runs[1]?.workoutId])
+  })
+
+  it('sorts by date first and returns the original run objects', () => {
+    const later = run('2026-10-10', 'base', 5, 2500)
+    const earlier = run('2026-10-01', 'base', 5, 2700)
+    const prs = runPRs([later, earlier])
+    expect(prs).toHaveLength(1)
+    expect(prs[0]?.run).toBe(later)
+  })
+
+  it('is empty with no runs', () => {
+    expect(runPRs([])).toEqual([])
+  })
+
+  it('rejects invalid runs', () => {
+    expect(() => runPRs([run('2026-10-01', 'base', 0, 100)])).toThrow(RangeError)
   })
 })

@@ -4,8 +4,13 @@ import { formatDuration, formatMiles } from '../lib/format'
 import { DateLineChart } from './DateLineChart'
 
 /** Distance of each long run over time. */
-export function LongRunChart({ runs }: { runs: Run[] }) {
-  const points = runs.map((run) => ({ date: run.date, value: run.distanceMi, run }))
+export function LongRunChart({ runs, prIds }: { runs: Run[]; prIds?: ReadonlySet<string> }) {
+  const points = runs.map((run) => ({
+    date: run.date,
+    value: run.distanceMi,
+    run,
+    pr: prIds?.has(run.workoutId) ?? false,
+  }))
   return (
     <DateLineChart
       points={points}

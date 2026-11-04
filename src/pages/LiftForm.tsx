@@ -95,6 +95,7 @@ export function LiftForm({ editing }: LiftFormProps) {
       const exerciseWord = check.exerciseCount === 1 ? 'exercise' : 'exercises'
       const setWord = check.sets.length === 1 ? 'set' : 'sets'
       setSaved({ text: `Saved: ${check.exerciseCount} ${exerciseWord} · ${check.sets.length} ${setWord}`, workoutId })
+      storeDraft(null) // now, not in an effect: the workout is saved even if the tab closes
       setDraft(emptyDraft(draft.date))
     } catch (err) {
       setError(errorMessage(err))

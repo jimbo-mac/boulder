@@ -3,6 +3,7 @@
  * Invalid inputs (zero, negative, non-finite) throw RangeError; callers validate first.
  */
 import { addDays, weekStart, type ISODate } from './dates'
+import type { RunKind } from './runKinds'
 
 function assertPositive(name: string, value: number): void {
   if (!Number.isFinite(value) || value <= 0) {
@@ -219,6 +220,155 @@ export function repsByDay(sets: readonly (LiftSet & { date: ISODate })[]): RepsP
   return [...byDay.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
 }
 
+// --- PRs -------------------------------------------------------------------------
+
+/** Values closer than this are a tie, not a PR (floating-point noise in 1RM math). */
+const PR_EPSILON = 1e-9
+
+export interface LiftPR {
+  date: ISODate
+  /** Est. 1RM (weighted lifts) or most reps in a set (reps-only lifts). */
+  value: number
+  /** Best value on any earlier day. */
+  previousBest: number
+  /** The set that set it. 0 for reps-only lifts. */
+  weightLb: number
+  reps: number
+}
+
+/**
+ * Days that beat every earlier day, oldest first. The first day is the baseline,
+ * not a PR. `days` must be one point per day, oldest first.
+ */
+function recordDays<D extends { value: number }>(days: readonly D[]): { day: D; previousBest: number }[] {
+  const records: { day: D; previousBest: number }[] = []
+  let best: number | null = null
+  for (const day of days) {
+    if (best !== null && day.value > best + PR_EPSILON) records.push({ day, previousBest: best })
+    if (best === null || day.value > best) best = day.value
+  }
+  return records
+}
+
+/**
+ * PR days for one exercise, oldest first. Pass the exercise's full history (not just
+ * the visible range) so old lifts aren't mistaken for new PRs.
+ * - 'weight': best est. 1RM per day; warm-ups, 0 lb sets and sets over 12 reps don't count.
+ * - 'reps': most reps in one working set per day.
+ */
+export function liftPRs(
+  sets: readonly (LiftSet & { date: ISODate })[],
+  tracking: 'weight' | 'reps',
+): LiftPR[] {
+  if (tracking === 'reps') {
+    return recordDays(repsByDay(sets).map((d) => ({ ...d, value: d.bestSet }))).map(
+      ({ day, previousBest }) => ({ date: day.date, value: day.value, previousBest, weightLb: 0, reps: day.bestSet }),
+    )
+  }
+  const confident = sets.filter((set) => set.reps <= MAX_CONFIDENT_REPS)
+  return recordDays(oneRepMaxByDay(confident)).map(({ day, previousBest }) => ({
+    date: day.date,
+    value: day.value,
+    previousBest,
+    weightLb: day.weightLb,
+    reps: day.reps,
+  }))
+}
+
+/** Pace PRs only compare runs within this fraction of the same distance. */
+export const PR_DISTANCE_TOLERANCE = 0.05
+
+export interface RunPRInput {
+  workoutId: string
+  date: ISODate
+  distanceMi: number
+  durationS: number
+  kind: RunKind
+}
+
+export interface RunPR<R extends RunPRInput = RunPRInput> {
+  run: R
+  /** Long runs: longest distance. Everything else: fastest pace at about this distance. */
+  measure: 'distance' | 'pace'
+  /** Miles (distance) or seconds per mile (pace). */
+  value: number
+  previousBest: number
+}
+
+/**
+ * Run PRs, oldest first. Pass all runs, not just the visible range. Same-day runs
+ * keep their given order.
+ * - Long runs: longer than every earlier long run.
+ * - Base / recovery / speed: faster pace than every earlier run of the same type
+ *   within ±5% of its distance. A run with no such earlier run sets a baseline.
+ */
+export function runPRs<R extends RunPRInput>(runs: readonly R[]): RunPR<R>[] {
+  const sorted = [...runs].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+  const prs: RunPR<R>[] = []
+  sorted.forEach((run, i) => {
+    const runPace = pace(run.durationS, run.distanceMi)
+    const earlier = sorted.slice(0, i).filter((r) => r.kind === run.kind)
+    if (run.kind === 'long') {
+      if (earlier.length === 0) return
+      const longest = Math.max(...earlier.map((r) => r.distanceMi))
+      if (run.distanceMi > longest + PR_EPSILON) {
+        prs.push({ run, measure: 'distance', value: run.distanceMi, previousBest: longest })
+      }
+      return
+    }
+    const comparable = earlier.filter(
+      (r) => Math.abs(r.distanceMi - run.distanceMi) <= run.distanceMi * PR_DISTANCE_TOLERANCE + PR_EPSILON,
+    )
+    if (comparable.length === 0) return
+    const fastest = Math.min(...comparable.map((r) => pace(r.durationS, r.distanceMi)))
+    if (runPace < fastest - PR_EPSILON) {
+      prs.push({ run, measure: 'pace', value: runPace, previousBest: fastest })
+    }
+  })
+  return prs
+}
+
+// --- Weekly totals -----------------------------------------------------------------
+
+/** A zero for every Monday from the week containing `from` through the week containing `to`. */
+function emptyWeeks(from: ISODate, to: ISODate): Map<ISODate, number> {
+  const first = weekStart(from)
+  const last = weekStart(to)
+  if (first > last) throw new RangeError(`from (${from}) is after to (${to})`)
+  const totals = new Map<ISODate, number>()
+  for (let week = first; week <= last; week = addDays(week, 7)) totals.set(week, 0)
+  return totals
+}
+
+export interface WeeklyVolume {
+  /** Monday that starts the week. */
+  weekStart: ISODate
+  /** Pounds lifted (weight × reps), or total reps for reps-only lifts. */
+  value: number
+}
+
+/**
+ * Weekly volume for one exercise from the week containing `from` through the week
+ * containing `to`; empty weeks are 0. Warm-ups don't count; sets outside the range are ignored.
+ * - 'weight': Σ weight × reps.  - 'reps': Σ reps (bodyweight sets are stored as 0 lb).
+ */
+export function weeklyVolume(
+  sets: readonly (LiftSet & { date: ISODate })[],
+  from: ISODate,
+  to: ISODate,
+  tracking: 'weight' | 'reps',
+): WeeklyVolume[] {
+  const totals = emptyWeeks(from, to)
+  for (const set of sets) {
+    const volume = setVolume(set) // validates weight and reps
+    const week = weekStart(set.date)
+    const current = totals.get(week)
+    if (current === undefined || set.isWarmup) continue
+    totals.set(week, current + (tracking === 'reps' ? set.reps : volume))
+  }
+  return [...totals].map(([week, value]) => ({ weekStart: week, value: Math.round(value * 100) / 100 }))
+}
+
 export interface WeeklyMileage {
   /** Monday that starts the week. */
   weekStart: ISODate
@@ -235,13 +385,7 @@ export function weeklyMileage(
   from: ISODate,
   to: ISODate,
 ): WeeklyMileage[] {
-  const first = weekStart(from)
-  const last = weekStart(to)
-  if (first > last) throw new RangeError(`from (${from}) is after to (${to})`)
-
-  const totals = new Map<ISODate, number>()
-  for (let week = first; week <= last; week = addDays(week, 7)) totals.set(week, 0)
-
+  const totals = emptyWeeks(from, to)
   for (const run of runs) {
     assertPositive('distanceMi', run.distanceMi)
     const week = weekStart(run.date)

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { LongRunChart } from '../components/LongRunChart'
+import { PR_COLOR } from '../components/prMarker'
 import { PaceTrendChart } from '../components/PaceTrendChart'
 import { cardClass, chipClass } from '../components/ui'
 import { WeeklyMileageChart } from '../components/WeeklyMileageChart'
@@ -7,7 +8,7 @@ import { addDays, formatLongDate, formatShortDate, todayLocal, toDayNumber, week
 import { runsBetween, type Run } from '../lib/db/runs'
 import { getSettings, type Settings } from '../lib/db/settings'
 import { formatDuration, formatMiles, formatPace, formatPaceChange } from '../lib/format'
-import { goalPace, pace, paceTrend, predictRaceTime, weeklyMileage } from '../lib/metrics'
+import { goalPace, pace, paceTrend, predictRaceTime, runPRs, weeklyMileage, type RunPR } from '../lib/metrics'
 import { describeDistance } from '../lib/races'
 import { RANGES, rangeStart, type RangeValue } from '../lib/ranges'
 import { routeHref } from '../lib/router'
@@ -18,6 +19,8 @@ import { useAsync } from '../lib/useAsync'
 const PACE_WINDOW = 5
 /** The race prediction looks at best efforts from this many recent days. */
 const PREDICTION_DAYS = 56
+/** Most PRs listed under Recent PRs. */
+const RECENT_PR_LIMIT = 10
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -49,6 +52,10 @@ export function RunningProgress() {
     runs: await runsBetween(from, today),
   }))
   const settings = useAsync('settings', getSettings)
+  // PRs compare against all earlier runs, whatever the range.
+  const allRuns = useAsync(`all..${today}`, () => runsBetween(null, today))
+  const prs = useMemo(() => (allRuns.data ? runPRs(allRuns.data) : []), [allRuns.data])
+  const prIds = useMemo(() => new Set(prs.map((pr) => pr.run.workoutId)), [prs])
 
   // Computed from the result's own range, so a dimmed old chart stays self-consistent.
   const weeks = useMemo(() => {
@@ -112,8 +119,14 @@ export function RunningProgress() {
               <WeeklyMileageChart data={weeks} />
             )}
           </section>
-          <PaceSection runs={runs} goalPaceS={goalPaceS} />
-          <LongRunSection runs={runs} />
+          <PaceSection runs={runs} goalPaceS={goalPaceS} prIds={prIds} />
+          <LongRunSection runs={runs} prIds={prIds} />
+          <RecentRunPRs
+            prs={prs
+              .filter((pr) => (from === null || pr.run.date >= from) && pr.run.date <= today)
+              .reverse()
+              .slice(0, RECENT_PR_LIMIT)}
+          />
         </div>
       )}
     </div>
@@ -188,7 +201,15 @@ function GoalCard({ goal, today }: { goal: Settings; today: string }) {
   )
 }
 
-function PaceSection({ runs, goalPaceS }: { runs: Run[]; goalPaceS: number | null }) {
+function PaceSection({
+  runs,
+  goalPaceS,
+  prIds,
+}: {
+  runs: Run[]
+  goalPaceS: number | null
+  prIds: ReadonlySet<string>
+}) {
   const [kind, setKind] = useState<RunKind>('base')
   const ofKind = runs.filter((run) => run.kind === kind)
   const trend = paceTrend(ofKind, PACE_WINDOW)
@@ -224,14 +245,18 @@ function PaceSection({ runs, goalPaceS }: { runs: Run[]; goalPaceS: number | nul
             />
             <Figure label="Change in range" value={formatPaceChange(trend.improvement)} />
           </div>
-          <PaceTrendChart points={trend.points} windowSize={PACE_WINDOW} goalPaceS={goalPaceS} />
+          <PaceTrendChart
+            points={trend.points.map((p, i) => ({ ...p, pr: prIds.has(ofKind[i]?.workoutId ?? '') }))}
+            windowSize={PACE_WINDOW}
+            goalPaceS={goalPaceS}
+          />
         </>
       )}
     </section>
   )
 }
 
-function LongRunSection({ runs }: { runs: Run[] }) {
+function LongRunSection({ runs, prIds }: { runs: Run[]; prIds: ReadonlySet<string> }) {
   const longRuns = runs.filter((run) => run.kind === 'long')
   const longest = longRuns.reduce((max, run) => Math.max(max, run.distanceMi), 0)
   const latest = longRuns.at(-1)
@@ -251,8 +276,55 @@ function LongRunSection({ runs }: { runs: Run[] }) {
               detail={latest ? formatShortDate(latest.date) : undefined}
             />
           </div>
-          <LongRunChart runs={longRuns} />
+          <LongRunChart runs={longRuns} prIds={prIds} />
         </>
+      )}
+    </section>
+  )
+}
+
+function RecentRunPRs({ prs }: { prs: RunPR<Run>[] }) {
+  return (
+    <section className={`${cardClass} flex flex-col gap-3`}>
+      <h2 className="font-semibold">Recent PRs</h2>
+      {prs.length === 0 ? (
+        <p className="text-sm text-stone-400">
+          No PRs in this range yet. Long runs: go longer than ever. Other runs: beat your best pace for
+          that type at about the same distance (±5%).
+        </p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-stone-800">
+          {prs.map((pr) => (
+            <li key={pr.run.workoutId} className="flex items-center justify-between gap-3 py-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <svg width="10" height="10" className="shrink-0" aria-hidden="true">
+                  <circle cx="5" cy="5" r="4" fill={PR_COLOR} />
+                </svg>
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    {runKindLabel(pr.run.kind)} · {pr.measure === 'distance' ? 'longest' : 'fastest'}
+                  </p>
+                  <p className="text-xs text-stone-400">{formatShortDate(pr.run.date)}</p>
+                </div>
+              </div>
+              <div className="shrink-0 text-right tabular-nums">
+                {pr.measure === 'distance' ? (
+                  <>
+                    <p className="font-semibold">{formatMiles(pr.value)} mi</p>
+                    <p className="text-xs text-stone-400">+{formatMiles(pr.value - pr.previousBest)} mi</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">{formatPace(pr.value)} /mi</p>
+                    <p className="text-xs text-stone-400">
+                      {formatMiles(pr.run.distanceMi)} mi · {formatDuration(pr.previousBest - pr.value)} faster
+                    </p>
+                  </>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   )

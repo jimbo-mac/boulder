@@ -73,30 +73,41 @@ export async function updateLift(
 
 export interface DatedSet extends LiftSet {
   date: ISODate
+  exerciseId: string
 }
 
-/** All sets of one exercise with `from <= date <= to` (omit `from` for all time), oldest first. */
-export async function setsForExercise(
-  exerciseId: string,
-  from: ISODate | null,
-  to: ISODate,
-): Promise<DatedSet[]> {
-  let query = supabase
-    .from('sets')
-    .select('weight_lb, reps, is_warmup, set_order, workouts!inner(date)')
-    .eq('exercise_id', exerciseId)
-    .lte('workouts.date', to)
-  if (from) query = query.gte('workouts.date', from)
-  const { data, error } = await query
-  if (error) throw error
-  return data
-    .map((row) => ({
-      date: row.workouts.date,
-      order: row.set_order,
-      weightLb: Number(row.weight_lb),
-      reps: row.reps,
-      isWarmup: row.is_warmup,
-    }))
+/** Supabase returns at most 1000 rows per request; page well under that. */
+const PAGE = 1000
+
+/**
+ * Every set you've logged, oldest first (by date, then set order). PRs need full
+ * history, so the Lifting tab loads this once and filters by exercise and range locally.
+ */
+export async function allSets(): Promise<DatedSet[]> {
+  const rows: { date: ISODate; order: number; set: DatedSet }[] = []
+  for (let offset = 0; ; offset += PAGE) {
+    const { data, error } = await supabase
+      .from('sets')
+      .select('id, exercise_id, weight_lb, reps, is_warmup, set_order, workouts!inner(date)')
+      .order('id', { ascending: true })
+      .range(offset, offset + PAGE - 1)
+    if (error) throw error
+    for (const row of data) {
+      rows.push({
+        date: row.workouts.date,
+        order: row.set_order,
+        set: {
+          date: row.workouts.date,
+          exerciseId: row.exercise_id,
+          weightLb: Number(row.weight_lb),
+          reps: row.reps,
+          isWarmup: row.is_warmup,
+        },
+      })
+    }
+    if (data.length < PAGE) break
+  }
+  return rows
     .sort((a, b) => (a.date === b.date ? a.order - b.order : a.date < b.date ? -1 : 1))
-    .map(({ order: _order, ...set }) => set)
+    .map((row) => row.set)
 }

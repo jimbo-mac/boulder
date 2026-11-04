@@ -1,6 +1,7 @@
 import type { Key, ReactNode } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatShortDate, fromDayNumber, toDayNumber, type ISODate } from '../lib/dates'
+import { PR_COLOR, PrBadge, PrLegend } from './prMarker'
 
 // Validated (dataviz checks) against the stone-900 card surface.
 const LINE = '#3987e5'
@@ -13,6 +14,8 @@ export interface DatePoint {
   value: number
   /** Drawn as a hollow dot (e.g. a low-confidence estimate). */
   hollow?: boolean
+  /** A personal record: drawn as a larger yellow dot and labeled "PR" in the tooltip. */
+  pr?: boolean
 }
 
 interface Datum<P extends DatePoint> {
@@ -30,6 +33,9 @@ interface DotProps {
 function Dot({ cx, cy, payload }: DotProps) {
   if (cx === undefined || cy === undefined) return null
   const hollow = payload?.point?.hollow === true
+  if (payload?.point?.pr === true) {
+    return <circle cx={cx} cy={cy} r={6} fill={PR_COLOR} stroke={SURFACE} strokeWidth={2} />
+  }
   return (
     <circle
       cx={cx}
@@ -65,9 +71,11 @@ export function DateLineChart<P extends DatePoint>({
   const data: Datum<P>[] = points.map((point) => ({ day: toDayNumber(point.date), value: point.value, point }))
   const firstDay = data[0]?.day ?? 0
   const lastDay = data.at(-1)?.day ?? 0
+  const anyPr = points.some((p) => p.pr)
 
   return (
     <>
+      {anyPr && <PrLegend />}
       <div className="h-48 w-full md:h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -8 }}>
@@ -98,6 +106,7 @@ export function DateLineChart<P extends DatePoint>({
                 if (!active || !datum) return null
                 return (
                   <div className="rounded-lg border border-stone-700 bg-stone-950 px-3 py-2 shadow-lg">
+                    {datum.point.pr && <PrBadge />}
                     {tooltip(datum.point)}
                   </div>
                 )
@@ -133,7 +142,10 @@ export function DateLineChart<P extends DatePoint>({
           {points.map((point, i) => (
             <tr key={`${point.date}-${i}`}>
               <td>{formatShortDate(point.date)}</td>
-              <td>{formatValue(point.value)}</td>
+              <td>
+                {formatValue(point.value)}
+                {point.pr && ' (PR)'}
+              </td>
             </tr>
           ))}
         </tbody>

@@ -1,3 +1,4 @@
+import type { Key } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -12,6 +13,7 @@ import { formatShortDate, fromDayNumber, toDayNumber } from '../lib/dates'
 import { formatPace } from '../lib/format'
 import type { PacePoint } from '../lib/metrics'
 import { paceTicks } from '../lib/ticks'
+import { PR_COLOR, PrBadge } from './prMarker'
 
 // One hue (validated against the stone-900 card): dots = each run, line = trend.
 const LINE = '#3987e5'
@@ -21,8 +23,22 @@ const GRID = '#292524'
 const AXIS_TEXT = '#a8a29e'
 const GOAL = '#d6d3d1' // stone-300: a neutral reference, not a data series
 
-interface Datum extends PacePoint {
+export interface PaceChartPoint extends PacePoint {
+  /** A pace PR: drawn as a larger yellow dot. */
+  pr?: boolean
+}
+
+interface Datum extends PaceChartPoint {
   day: number
+}
+
+function RunDot({ cx, cy, payload }: { cx?: number; cy?: number; payload?: Datum }) {
+  if (cx === undefined || cy === undefined) return null
+  return payload?.pr ? (
+    <circle cx={cx} cy={cy} r={6} fill={PR_COLOR} stroke={SURFACE} strokeWidth={2} />
+  ) : (
+    <circle cx={cx} cy={cy} r={4} fill={DOT} stroke={SURFACE} strokeWidth={2} />
+  )
 }
 
 function TooltipBody({
@@ -38,6 +54,7 @@ function TooltipBody({
   if (!active || !point) return null
   return (
     <div className="rounded-lg border border-stone-700 bg-stone-950 px-3 py-2 shadow-lg">
+      {point.pr && <PrBadge />}
       <p className="text-xs text-stone-400">{formatShortDate(point.date)}</p>
       <p className="text-base font-semibold text-stone-100 tabular-nums">
         {formatPace(point.pace)} <span className="text-xs font-normal text-stone-400">/mi this run</span>
@@ -56,7 +73,7 @@ export function PaceTrendChart({
   windowSize,
   goalPaceS = null,
 }: {
-  points: PacePoint[]
+  points: PaceChartPoint[]
   windowSize: number
   /** Draws a reference line at goal pace when set. */
   goalPaceS?: number | null
@@ -85,6 +102,14 @@ export function PaceTrendChart({
           </svg>
           {windowSize}-run average
         </span>
+        {points.some((p) => p.pr) && (
+          <span className="flex items-center gap-1.5">
+            <svg width="12" height="12">
+              <circle cx="6" cy="6" r="5" fill={PR_COLOR} />
+            </svg>
+            PR
+          </span>
+        )}
         {goalPaceS !== null && (
           <span className="flex items-center gap-1.5">
             <svg width="16" height="10">
@@ -131,7 +156,10 @@ export function PaceTrendChart({
             <Line
               dataKey="pace"
               stroke="none"
-              dot={{ r: 4, fill: DOT, stroke: SURFACE, strokeWidth: 2 }}
+              dot={(props: { cx?: number; cy?: number; payload?: Datum; key?: Key | null }) => {
+                const { key, ...rest } = props
+                return <RunDot key={key ?? undefined} {...rest} />
+              }}
               activeDot={{ r: 6, fill: LINE, stroke: SURFACE, strokeWidth: 2 }}
               isAnimationActive={false}
             />
@@ -163,7 +191,10 @@ export function PaceTrendChart({
           {points.map((p, i) => (
             <tr key={`${p.date}-${i}`}>
               <td>{formatShortDate(p.date)}</td>
-              <td>{formatPace(p.pace)}</td>
+              <td>
+                {formatPace(p.pace)}
+                {p.pr && ' (PR)'}
+              </td>
               <td>{formatPace(p.avg)}</td>
             </tr>
           ))}
