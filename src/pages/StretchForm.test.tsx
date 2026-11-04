@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { checksBetween, listHabits, setCheck } from '../lib/db/habits'
-import { Stretch } from './Stretch'
+import { StretchForm } from './StretchForm'
 
 vi.mock('../lib/db/habits', () => ({ listHabits: vi.fn(), checksBetween: vi.fn(), setCheck: vi.fn() }))
 const mockList = vi.mocked(listHabits)
@@ -14,7 +14,7 @@ const general = { id: 'g', name: 'General', weeklyGoal: 2 }
 const routine = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) })
 const day = (label: string) => screen.getByRole('button', { name: new RegExp(`^${label}:`) })
 
-describe('Stretch', () => {
+describe('StretchForm', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 10, 4, 9, 0)) // Wed Nov 4 2026
@@ -32,7 +32,7 @@ describe('Stretch', () => {
   })
 
   it('shows this week against each goal and loads the visible month', async () => {
-    render(<Stretch />)
+    render(<StretchForm />)
     await waitFor(() => expect(routine('Posture')).toHaveTextContent('2 of 3 this week'))
     expect(routine('General')).toHaveTextContent('1 of 2 this week')
     // Nov 2026 grid runs Mon Oct 26 – Sun Dec 6.
@@ -42,7 +42,7 @@ describe('Stretch', () => {
   })
 
   it('marks each day in the calendar', async () => {
-    render(<Stretch />)
+    render(<StretchForm />)
     await waitFor(() => expect(day('Tue, Nov 3, 2026')).toHaveAccessibleName(/Posture done, General done/))
     expect(day('Mon, Nov 2, 2026')).toHaveAccessibleName(/Posture done, General not done/)
     expect(day('Thu, Oct 29, 2026')).toHaveAccessibleName(/Posture not done, General done/)
@@ -52,7 +52,7 @@ describe('Stretch', () => {
   })
 
   it('checks off today with one tap and can undo it', async () => {
-    render(<Stretch />)
+    render(<StretchForm />)
     await waitFor(() => expect(routine('Posture')).toHaveTextContent('2 of 3'))
     fireEvent.click(routine('Posture'))
     expect(routine('Posture')).toHaveAttribute('aria-pressed', 'true')
@@ -65,7 +65,7 @@ describe('Stretch', () => {
   })
 
   it('checks off a forgotten past day', async () => {
-    render(<Stretch />)
+    render(<StretchForm />)
     await waitFor(() => expect(day('Mon, Nov 2, 2026')).toHaveAccessibleName(/General not done/))
     fireEvent.click(day('Mon, Nov 2, 2026'))
     expect(screen.getByText('Mon, Nov 2, 2026')).toBeInTheDocument()
@@ -78,7 +78,7 @@ describe('Stretch', () => {
   })
 
   it('goes to the previous month, still loading the selected week', async () => {
-    render(<Stretch />)
+    render(<StretchForm />)
     await screen.findByRole('heading', { name: 'November 2026' })
     fireEvent.click(screen.getByRole('button', { name: 'Previous month' }))
     expect(screen.getByRole('heading', { name: 'October 2026' })).toBeInTheDocument()
@@ -88,7 +88,7 @@ describe('Stretch', () => {
 
   it('undoes the tap and explains when saving fails', async () => {
     mockSet.mockRejectedValue(new Error('offline'))
-    render(<Stretch />)
+    render(<StretchForm />)
     await waitFor(() => expect(routine('General')).toHaveTextContent('1 of 2'))
     fireEvent.click(routine('General'))
     expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't save: offline")

@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 /** Tiny hash router: the current screen lives in the URL as #/log, #/progress, ... */
-export const ROUTES = ['log', 'progress', 'stretch', 'history', 'settings'] as const
+export const ROUTES = ['log', 'progress', 'history', 'settings'] as const
 export type Route = (typeof ROUTES)[number]
 
 const DESKTOP_QUERY = '(min-width: 768px)'

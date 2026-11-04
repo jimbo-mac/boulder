@@ -43,8 +43,8 @@ function Dot({ color, size = 8, hollow = false }: { color: string; size?: number
   )
 }
 
-/** Stretching: check off each routine per day, see the month, track the weekly goal. */
-export function Stretch() {
+/** Log > Stretch: check off each routine per day, see the month, track the weekly goal. */
+export function StretchForm() {
   const today = todayLocal()
   const [selected, setSelected] = useState<ISODate>(today)
   const [month, setMonth] = useState<ISODate>(monthStart(today))
@@ -102,9 +102,7 @@ export function Stretch() {
   const isToday = selected === today
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-4">
-      <h1 className="text-2xl font-bold tracking-tight">Stretch</h1>
-
+    <div className="flex flex-col gap-4">
       <div className="flex items-baseline justify-between gap-3">
         <p className="font-medium">{isToday ? 'Today' : formatLongDate(selected)}</p>
         {!isToday && (

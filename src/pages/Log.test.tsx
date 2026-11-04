@@ -1,10 +1,12 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { listHabits, checksBetween } from '../lib/db/habits'
 import { logRun } from '../lib/db/runs'
 import { Log } from './Log'
 
 vi.mock('../lib/db/runs', () => ({ logRun: vi.fn(), updateRun: vi.fn() }))
 vi.mock('../lib/db/lifts', () => ({ listExercises: vi.fn(), createExercise: vi.fn(), logLift: vi.fn(), updateLift: vi.fn() }))
+vi.mock('../lib/db/habits', () => ({ listHabits: vi.fn(), checksBetween: vi.fn(), setCheck: vi.fn() }))
 const mockLogRun = vi.mocked(logRun)
 
 function fill({ distance, time }: { distance?: string; time?: string }) {
@@ -101,5 +103,18 @@ describe('Log run form', () => {
     fireEvent.click(saveButton())
     expect(await screen.findByRole('alert')).toHaveTextContent('network down')
     expect(screen.getByLabelText('Distance (mi)')).toHaveValue('5')
+  })
+})
+
+describe('Log Stretch option', () => {
+  it('sits next to Run and Lift and opens the stretching check-offs', async () => {
+    vi.mocked(listHabits).mockResolvedValue([{ id: 'p', name: 'Posture', weeklyGoal: 3 }])
+    vi.mocked(checksBetween).mockResolvedValue([])
+    render(<Log />)
+    const group = screen.getByRole('group', { name: 'Workout type' })
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Run', 'Lift', 'Stretch'])
+    fireEvent.click(screen.getByRole('button', { name: 'Stretch' }))
+    expect(screen.getByRole('button', { name: 'Stretch' })).toHaveAttribute('aria-pressed', 'true')
+    expect(await screen.findByRole('button', { name: /^Posture/ })).toBeInTheDocument()
   })
 })

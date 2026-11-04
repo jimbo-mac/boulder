@@ -13,17 +13,6 @@ const TABS: { route: Route; label: string; icon: ReactNode }[] = [
     icon: <path d="M4 19V10M10 19V5M16 19v-7M22 19H2" />,
   },
   {
-    route: 'stretch',
-    label: 'Stretch',
-    // A figure with arms raised.
-    icon: (
-      <>
-        <circle cx="12" cy="4" r="2" />
-        <path d="M5 7l7 3 7-3M12 10v4M12 14l-4 7M12 14l4 7" />
-      </>
-    ),
-  },
-  {
     route: 'history',
     label: 'History',
     icon: <path d="M4 6h16M4 12h16M4 18h10" />,
@@ -93,7 +82,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         aria-label="Main"
         className="fixed inset-x-0 bottom-0 border-t border-stone-800 bg-stone-950/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-4">
           {TABS.map((tab) => (
             <a
               key={tab.route}

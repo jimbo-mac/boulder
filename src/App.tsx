@@ -6,7 +6,6 @@ import { EditWorkout } from './pages/EditWorkout'
 import { History } from './pages/History'
 import { Log } from './pages/Log'
 import { Settings } from './pages/Settings'
-import { Stretch } from './pages/Stretch'
 
 // Charts (Recharts) are big; load them only when Progress is opened.
 const Progress = lazy(() => import('./pages/Progress').then((m) => ({ default: m.Progress })))
@@ -21,8 +20,6 @@ function Page({ location, email }: { location: Location; email: string }) {
           <Progress />
         </Suspense>
       )
-    case 'stretch':
-      return <Stretch />
     case 'history':
       return location.workoutId ? (
         <EditWorkout key={location.workoutId} workoutId={location.workoutId} />
