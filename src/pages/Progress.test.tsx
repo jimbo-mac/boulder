@@ -48,38 +48,46 @@ describe('Progress (running)', () => {
     vi.useRealTimers()
   })
 
-  it('defaults to 12 weeks and fills empty weeks with 0', async () => {
+  it('defaults to 1 month (4 weeks) and fills empty weeks with 0', async () => {
     render(<Progress />)
     const items = await screen.findAllByRole('listitem')
-    expect(mockRunsBetween).toHaveBeenCalledWith('2026-08-17', '2026-11-04')
-    expect(items).toHaveLength(12)
+    expect(mockRunsBetween).toHaveBeenCalledWith('2026-10-12', '2026-11-04')
+    expect(items).toHaveLength(4)
     expect(items.at(-1)).toHaveTextContent('2026-11-02=6')
     expect(items.at(-2)).toHaveTextContent('2026-10-26=4')
-    expect(items.at(0)).toHaveTextContent('2026-08-17=0')
+    expect(items.at(0)).toHaveTextContent('2026-10-12=0')
   })
 
   it('shows this week, weekly average, and total', async () => {
     render(<Progress />)
     expect(await screen.findByText('6.0 mi')).toBeInTheDocument() // this week
-    expect(screen.getByText('0.8 mi')).toBeInTheDocument() // 10 / 12
+    expect(screen.getByText('2.5 mi')).toBeInTheDocument() // 10 / 4
     expect(screen.getByText('10.0 mi')).toBeInTheDocument()
   })
 
   it('refetches when the range changes', async () => {
     render(<Progress />)
     await screen.findAllByRole('listitem')
-    fireEvent.click(screen.getByRole('button', { name: '4w' }))
+    fireEvent.click(screen.getByRole('button', { name: '3m' }))
     await vi.waitFor(() =>
-      expect(mockRunsBetween).toHaveBeenLastCalledWith('2026-10-12', '2026-11-04'),
+      expect(mockRunsBetween).toHaveBeenLastCalledWith('2026-08-10', '2026-11-04'),
     )
   })
 
-  it('"All" starts at the first run', async () => {
+  it('1w shows just this week', async () => {
     render(<Progress />)
     await screen.findAllByRole('listitem')
-    fireEvent.click(screen.getByRole('button', { name: 'All' }))
-    await vi.waitFor(() => expect(mockRunsBetween).toHaveBeenLastCalledWith(null, '2026-11-04'))
-    await vi.waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2))
+    fireEvent.click(screen.getByRole('button', { name: '1w' }))
+    await vi.waitFor(() =>
+      expect(mockRunsBetween).toHaveBeenLastCalledWith('2026-11-02', '2026-11-04'),
+    )
+  })
+
+  it('offers only 1w, 1m, and 3m', async () => {
+    render(<Progress />)
+    const group = await screen.findByRole('group', { name: 'Time range' })
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['1w', '1m', '3m'])
+    expect(within(group).getByRole('button', { name: '1m' })).toHaveAttribute('aria-pressed', 'true')
   })
 
   describe('pace section', () => {
@@ -139,14 +147,14 @@ describe('Progress (running)', () => {
 
     it('marks long-run distance PRs and lists recent PRs newest first', async () => {
       mockRunsBetween.mockResolvedValue([
-        run('l1', '2026-10-04', 8, 4800, 'long'),
-        run('b1', '2026-10-06', 5, 2700, 'base'), // 9:00 baseline
-        run('l2', '2026-10-11', 10, 6000, 'long'), // PR +2
-        run('b2', '2026-10-13', 5.1, 2652, 'base'), // 8:40, PR
-        run('l3', '2026-10-18', 9, 5400, 'long'),
+        run('l1', '2026-10-14', 8, 4800, 'long'),
+        run('b1', '2026-10-15', 5, 2700, 'base'), // 9:00 baseline
+        run('l2', '2026-10-21', 10, 6000, 'long'), // PR +2
+        run('b2', '2026-10-22', 5.1, 2652, 'base'), // 8:40, PR
+        run('l3', '2026-10-28', 9, 5400, 'long'),
       ])
       render(<Progress />)
-      expect(await screen.findByTestId('long-chart')).toHaveTextContent('2026-10-04=8 2026-10-11=10(PR) 2026-10-18=9')
+      expect(await screen.findByTestId('long-chart')).toHaveTextContent('2026-10-14=8 2026-10-21=10(PR) 2026-10-28=9')
       const heading = screen.getByRole('heading', { name: 'Recent PRs' })
       const items = within(heading.closest('section') as HTMLElement).getAllByRole('listitem')
       expect(items).toHaveLength(2)
@@ -160,11 +168,11 @@ describe('Progress (running)', () => {
 
     it('judges PRs against all runs, not just the visible range', async () => {
       const old = run('old', '2026-03-01', 12, 7200, 'long')
-      const recent = [run('l1', '2026-10-04', 8, 4800, 'long'), run('l2', '2026-10-11', 10, 6000, 'long')]
+      const recent = [run('l1', '2026-10-14', 8, 4800, 'long'), run('l2', '2026-10-21', 10, 6000, 'long')]
       mockRunsBetween.mockImplementation((from) => Promise.resolve(from === null ? [old, ...recent] : recent))
       render(<Progress />)
       await vi.waitFor(() => expect(mockRunsBetween).toHaveBeenCalledWith(null, '2026-11-04'))
-      expect(await screen.findByTestId('long-chart')).toHaveTextContent('2026-10-04=8 2026-10-11=10')
+      expect(await screen.findByTestId('long-chart')).toHaveTextContent('2026-10-14=8 2026-10-21=10')
       expect(screen.getByTestId('long-chart')).not.toHaveTextContent('(PR)')
       expect(screen.getByText(/No PRs in this range yet/)).toBeInTheDocument()
     })

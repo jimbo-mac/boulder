@@ -15,7 +15,7 @@ import {
   weeklyVolume,
   type LiftPR,
 } from '../lib/metrics'
-import { RANGES, rangeStart, type RangeValue } from '../lib/ranges'
+import { DEFAULT_RANGE, RANGES, rangeStart, type RangeValue } from '../lib/ranges'
 import { routeHref } from '../lib/router'
 import { useAsync } from '../lib/useAsync'
 
@@ -59,7 +59,7 @@ export function LiftingProgress() {
   // All history, loaded once: PRs compare against everything before, whatever the range.
   const sets = useAsync('sets:all', allSets)
   const [chosenId, setChosenId] = useState<string | null>(null)
-  const [range, setRange] = useState<RangeValue>('12w')
+  const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE)
   const from = rangeStart(range, today)
 
   const list = useMemo(() => exercises.data ?? [], [exercises.data])

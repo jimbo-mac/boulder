@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { rangeStart } from './ranges'
+import { DEFAULT_RANGE, RANGES, rangeStart } from './ranges'
 
 describe('rangeStart', () => {
   const today = '2026-11-04' // Wed; week starts Mon 2026-11-02
 
   it('covers whole weeks including the current one', () => {
-    expect(rangeStart('4w', today)).toBe('2026-10-12')
-    expect(rangeStart('12w', today)).toBe('2026-08-17')
-    expect(rangeStart('6m', today)).toBe('2026-05-11')
-    expect(rangeStart('1y', today)).toBe('2025-11-10')
+    expect(rangeStart('1w', today)).toBe('2026-11-02') // this week only
+    expect(rangeStart('1m', today)).toBe('2026-10-12') // 4 weeks
+    expect(rangeStart('3m', today)).toBe('2026-08-10') // 13 weeks
   })
 
-  it('has no lower bound for all', () => {
-    expect(rangeStart('all', today)).toBeNull()
+  it('lists the ranges shortest first, defaulting to 1 month', () => {
+    expect(RANGES.map((r) => r.label)).toEqual(['1w', '1m', '3m'])
+    expect(DEFAULT_RANGE).toBe('1m')
   })
 })

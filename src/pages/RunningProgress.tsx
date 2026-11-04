@@ -10,7 +10,7 @@ import { getSettings, type Settings } from '../lib/db/settings'
 import { formatDuration, formatMiles, formatPace, formatPaceChange } from '../lib/format'
 import { goalPace, pace, paceTrend, predictRaceTime, runPRs, weeklyMileage, type RunPR } from '../lib/metrics'
 import { describeDistance } from '../lib/races'
-import { RANGES, rangeStart, type RangeValue } from '../lib/ranges'
+import { DEFAULT_RANGE, RANGES, rangeStart, type RangeValue } from '../lib/ranges'
 import { routeHref } from '../lib/router'
 import { RUN_KINDS, runKindLabel, type RunKind } from '../lib/runKinds'
 import { useAsync } from '../lib/useAsync'
@@ -43,7 +43,7 @@ function Figure({ label, value, detail }: { label: string; value: string; detail
 
 export function RunningProgress() {
   const today = todayLocal()
-  const [range, setRange] = useState<RangeValue>('12w')
+  const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE)
   const from = rangeStart(range, today)
 
   const ranged = useAsync(`${from ?? 'all'}..${today}`, async () => ({

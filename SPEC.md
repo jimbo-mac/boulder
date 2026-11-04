@@ -136,7 +136,7 @@ Navigation (Log, Progress, History, Settings): bottom tab bar on phones, top tab
 2. **Progress** (default on desktop)
    - Running tab: weekly mileage (bar) with this-week / weekly-avg / total tiles; pace over time per run type (dots per run + 5-run average line, normal y-axis (lower = faster), "current" and "change in range" figures), long-run distance (line), goal-pace reference line + predicted race time card, PR markers on the pace and long-run charts, recent run PRs list
    - Lifting tab: est. 1RM per exercise (line, exercise selector), weekly volume for the selected exercise (bar; reps-only exercises show total reps per week), recent PRs list
-   - Time range selector: 4w / 12w / 6m / 1y / all
+   - Time range selector: 1w / 1m / 3m, default 1m (whole Mon–Sun weeks: 1, 4, 13). Kept short while there is little data; 6m / 1y / All can come back later. PRs are always judged against all history.
 3. **History** — reverse-chronological list of runs and lifts (lifts show exercises, working sets, volume). Tap a workout to edit it (`#/history/<id>`) in the same form it was logged with, or delete it (with a confirm). Edits are atomic (`update_lift` / `update_run`) and never touch the on-device lift draft. After saving a new workout, the "Saved" message links straight to its edit screen.
 4. **Settings** — goal race (optional name + date; distance via 5K / 10K / Half / Marathon presets or custom; goal time), weekly stretching goals (− / + per routine, 1–7 days, saves on tap), sign out, export all data as JSON.
    - Progress shows a goal card above the range selector: goal time + pace, predicted time + pace, gap, days to go, and which run the prediction used.
