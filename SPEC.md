@@ -118,14 +118,20 @@ Navigation: bottom tab bar on phones, top tabs on desktop; current screen lives 
    - The in-progress lift workout is saved to the device (localStorage) after every change, so closing the tab mid-workout loses nothing; Log reopens on Lift when a draft exists. Saving uses `log_lift()` (workout + all sets in one transaction). Fully blank set rows are skipped; half-filled rows block saving with a message.
 2. **Progress** (default on desktop)
    - Running tab: weekly mileage (bar) with this-week / weekly-avg / total tiles; pace over time per run type (dots per run + 5-run average line, normal y-axis (lower = faster), "current" and "change in range" figures), long-run distance (line), goal-pace reference line + predicted race time card
-   - Lifting tab: est. 1RM per exercise (line, exercise selector), weekly volume (bar), PR list
+   - Lifting tab: est. 1RM per exercise (line, exercise selector), weekly volume for the selected exercise (bar; reps-only exercises show total reps per week), recent PRs list
    - Time range selector: 4w / 12w / 6m / 1y / all
-3. **History** — reverse-chronological list of runs and lifts (lifts show exercises, working sets, volume); tap to edit/delete (slice 7).
+3. **History** — reverse-chronological list of runs and lifts (lifts show exercises, working sets, volume). Tap a workout to edit it (`#/history/<id>`) in the same form it was logged with, or delete it (with a confirm). Edits are atomic (`update_lift` / `update_run`) and never touch the on-device lift draft. After saving a new workout, the "Saved" message links straight to its edit screen.
 4. **Settings** — goal race (optional name + date; distance via 5K / 10K / Half / Marathon presets or custom; goal time), sign out, export all data as JSON.
    - Progress shows a goal card above the range selector: goal time + pace, predicted time + pace, gap, days to go, and which run the prediction used.
 
 ### PR detection
-A set is a PR if its est. 1RM exceeds every prior set for that exercise. A run is a PR if it's the fastest pace among runs within ±5% of its distance. PRs get a marker on charts.
+PRs are judged per day against **all** earlier history (not just the selected range), and the first-ever session of an exercise (or first run of a kind) is a baseline, not a PR. Ties are not PRs.
+- **Weighted lifts:** a day is a PR if its best est. 1RM beats every earlier day's for that exercise. Warm-ups, 0 lb sets, and low-confidence sets (> 12 reps) don't count.
+- **Reps-only lifts** (pull-ups): a day is a PR if its most reps in one working set beats every earlier day.
+- **Long runs:** a PR is the longest distance among all earlier long runs.
+- **Base / Recovery / Speed runs:** a PR is the fastest pace among earlier runs of the same type within ±5% of its distance (at least one such run must exist).
+
+PRs get a marker on charts and appear in a recent-PRs list.
 
 ---
 
@@ -136,8 +142,9 @@ A set is a PR if its est. 1RM exceeds every prior set for that exercise. A run i
 3. **Runs end-to-end** — log form → saved → History list → weekly mileage chart.
 4. **Run trends** — pace chart (done in slice 3), long-run chart, goal settings, goal-pace line, Riegel prediction.
 5. **Lifts end-to-end** — exercise catalog, set logging, est. 1RM chart.
-6. **Lift trends** — weekly volume, PR detection + markers.
-7. **PWA + polish** — manifest, icons (the boulder), offline-friendly shell, edit/delete, JSON export.
+   - **5b. Edit/delete** (moved up from slice 7 after a workout was saved too early) — edit/delete from History, "Edit" link after saving.
+6. **Lift trends** — weekly volume, PR detection + markers (lifts and runs).
+7. **PWA + polish** — manifest, icons (the boulder), offline-friendly shell, JSON export.
 
 ## v2 ideas
 - Strava/Garmin CSV import

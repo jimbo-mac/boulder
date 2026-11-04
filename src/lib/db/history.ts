@@ -1,5 +1,6 @@
 import type { ISODate } from '../dates'
 import { isRunKind, type RunKind } from '../runKinds'
+import type { NewRun } from './runs'
 import { supabase } from './client'
 
 export interface RunEntry {
@@ -66,4 +67,66 @@ export async function listHistory(offset: number, limit: number): Promise<Histor
       },
     ]
   })
+}
+
+export interface SavedSet {
+  exerciseId: string
+  exerciseName: string
+  weightLb: number
+  reps: number
+  isWarmup: boolean
+}
+
+/** One saved workout, in the shape the Log forms edit. */
+export type WorkoutDetail =
+  | { type: 'run'; workoutId: string; run: NewRun }
+  | { type: 'lift'; workoutId: string; date: ISODate; sets: SavedSet[] }
+
+/** Load one workout for editing. Returns null if it doesn't exist (or isn't yours). */
+export async function getWorkout(workoutId: string): Promise<WorkoutDetail | null> {
+  const { data, error } = await supabase
+    .from('workouts')
+    .select(
+      'id, date, type, runs(distance_mi, duration_s, run_kind), sets(set_order, weight_lb, reps, is_warmup, exercise_id, exercises(name))',
+    )
+    .eq('id', workoutId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+
+  if (data.type === 'run') {
+    const run = data.runs
+    if (!run || !isRunKind(run.run_kind)) return null
+    return {
+      type: 'run',
+      workoutId: data.id,
+      run: {
+        date: data.date,
+        distanceMi: Number(run.distance_mi),
+        durationS: run.duration_s,
+        kind: run.run_kind,
+      },
+    }
+  }
+  return {
+    type: 'lift',
+    workoutId: data.id,
+    date: data.date,
+    sets: [...data.sets]
+      .sort((a, b) => a.set_order - b.set_order)
+      .map((s) => ({
+        exerciseId: s.exercise_id,
+        exerciseName: s.exercises?.name ?? 'Exercise',
+        weightLb: Number(s.weight_lb),
+        reps: s.reps,
+        isWarmup: s.is_warmup,
+      })),
+  }
+}
+
+/** Delete a workout; its run or sets are deleted with it. */
+export async function deleteWorkout(workoutId: string): Promise<void> {
+  const { data, error } = await supabase.from('workouts').delete().eq('id', workoutId).select('id')
+  if (error) throw error
+  if (data.length === 0) throw new Error('Workout not found.')
 }

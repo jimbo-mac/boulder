@@ -3,6 +3,7 @@ import {
   addBlankSet,
   addExercise,
   checkDraft,
+  draftFromSets,
   DRAFT_STORAGE_KEY,
   emptyDraft,
   loadDraft,
@@ -202,5 +203,48 @@ describe('draft storage', () => {
     expect(parseDraft('{"date": 5, "blocks": []}')).toBeNull()
     expect(parseDraft('{"date": "2026-11-04", "blocks": [{"id": 1}]}')).toBeNull()
     expect(parseDraft(null)).toBeNull()
+  })
+})
+
+describe('draftFromSets', () => {
+  const squat = { exerciseId: 'sq', exerciseName: 'Back Squat' }
+  const pullUp = { exerciseId: 'pu', exerciseName: 'Pull-up' }
+
+  it('groups back-to-back sets of one exercise into a block, keeping order', () => {
+    const draft = draftFromSets('2026-11-03', [
+      { ...squat, weightLb: 135, reps: 5, isWarmup: true },
+      { ...squat, weightLb: 182.5, reps: 5, isWarmup: false },
+      { ...pullUp, weightLb: 0, reps: 8, isWarmup: false },
+      { ...squat, weightLb: 155, reps: 8, isWarmup: false },
+    ])
+    expect(draft.date).toBe('2026-11-03')
+    expect(draft.blocks.map((b) => [b.exerciseName, b.sets.length])).toEqual([
+      ['Back Squat', 2],
+      ['Pull-up', 1],
+      ['Back Squat', 1],
+    ])
+    expect(draft.blocks[0]?.sets.map(({ weight, reps, warmup }) => ({ weight, reps, warmup }))).toEqual([
+      { weight: '135', reps: '5', warmup: true },
+      { weight: '182.5', reps: '5', warmup: false },
+    ])
+  })
+
+  it('round-trips through checkDraft unchanged', () => {
+    const saved = [
+      { ...squat, weightLb: 182.5, reps: 5, isWarmup: false },
+      { ...pullUp, weightLb: 0, reps: 8, isWarmup: false },
+    ]
+    const check = checkDraft(draftFromSets('2026-11-03', saved), '2026-11-04', (id) =>
+      id === 'pu' ? 'reps' : 'weight',
+    )
+    expect(check).toEqual({
+      ok: true,
+      exerciseCount: 2,
+      sets: saved.map(({ exerciseId, weightLb, reps, isWarmup }) => ({ exerciseId, weightLb, reps, isWarmup })),
+    })
+  })
+
+  it('handles a workout with no sets', () => {
+    expect(draftFromSets('2026-11-03', [])).toEqual({ date: '2026-11-03', blocks: [] })
   })
 })

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ExercisePicker } from '../components/ExercisePicker'
+import { SavedMessage } from '../components/SavedMessage'
 import {
   errorMessage,
   inputClass,
@@ -9,7 +10,7 @@ import {
   secondaryButtonClass,
 } from '../components/ui'
 import { todayLocal } from '../lib/dates'
-import { listExercises, logLift } from '../lib/db/lifts'
+import { listExercises, logLift, updateLift } from '../lib/db/lifts'
 import type { Exercise } from '../lib/exercises'
 import {
   addBlankSet,
@@ -26,24 +27,37 @@ import {
   type DraftBlock,
   type LiftDraft,
 } from '../lib/liftDraft'
+import { editWorkoutHref } from '../lib/router'
 import { useAsync } from '../lib/useAsync'
 
 const smallInput =
   'h-12 w-full min-w-0 rounded-lg border border-stone-700 bg-stone-900 px-2 text-center text-lg tabular-nums text-stone-100 placeholder:text-stone-600 focus:border-stone-400 focus:outline-none'
 
-export function LiftForm() {
+export interface LiftFormProps {
+  /**
+   * Edit a saved workout instead of logging a new one. Edits stay in memory:
+   * the on-device draft belongs to the workout being logged.
+   */
+  editing?: { workoutId: string; initial: LiftDraft; onSaved: () => void }
+}
+
+export function LiftForm({ editing }: LiftFormProps) {
   const today = todayLocal()
-  const [draft, setDraft] = useState<LiftDraft>(() => loadDraft() ?? emptyDraft(today))
+  const [draft, setDraft] = useState<LiftDraft>(
+    () => editing?.initial ?? loadDraft() ?? emptyDraft(today),
+  )
   const catalog = useAsync('exercises', listExercises)
   const [created, setCreated] = useState<Exercise[]>([])
   const [picking, setPicking] = useState(false)
   const [problems, setProblems] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
-  const [saved, setSaved] = useState<string | null>(null)
+  const [saved, setSaved] = useState<{ text: string; workoutId: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Keep the in-progress workout on the device after every change.
-  useEffect(() => storeDraft(draft), [draft])
+  useEffect(() => {
+    if (!editing) storeDraft(draft)
+  }, [draft, editing])
 
   const exercises = [...(catalog.data ?? []), ...created.filter((c) => !catalog.data?.some((e) => e.id === c.id))]
 
@@ -72,10 +86,15 @@ export function LiftForm() {
     setBusy(true)
     setError(null)
     try {
-      await logLift(draft.date, check.sets)
+      if (editing) {
+        await updateLift(editing.workoutId, draft.date, check.sets)
+        editing.onSaved()
+        return
+      }
+      const workoutId = await logLift(draft.date, check.sets)
       const exerciseWord = check.exerciseCount === 1 ? 'exercise' : 'exercises'
       const setWord = check.sets.length === 1 ? 'set' : 'sets'
-      setSaved(`Saved: ${check.exerciseCount} ${exerciseWord} · ${check.sets.length} ${setWord}`)
+      setSaved({ text: `Saved: ${check.exerciseCount} ${exerciseWord} · ${check.sets.length} ${setWord}`, workoutId })
       setDraft(emptyDraft(draft.date))
     } catch (err) {
       setError(errorMessage(err))
@@ -143,19 +162,17 @@ export function LiftForm() {
       {draft.blocks.length > 0 && (
         <>
           <button type="button" onClick={() => void onSave()} disabled={busy} className={primaryButtonClass}>
-            {busy ? 'Saving…' : 'Save workout'}
+            {busy ? 'Saving…' : editing ? 'Save changes' : 'Save workout'}
           </button>
-          <button type="button" onClick={onDiscard} disabled={busy} className={`${linkButtonClass} self-center`}>
-            Discard workout
-          </button>
+          {!editing && (
+            <button type="button" onClick={onDiscard} disabled={busy} className={`${linkButtonClass} self-center`}>
+              Discard workout
+            </button>
+          )}
         </>
       )}
 
-      {saved && (
-        <p role="status" className="rounded-lg bg-emerald-950 px-4 py-3 text-sm text-emerald-200">
-          {saved}
-        </p>
-      )}
+      {saved && <SavedMessage text={saved.text} editHref={editWorkoutHref(saved.workoutId)} />}
       {error && (
         <p role="alert" className="rounded-lg bg-red-950 px-4 py-3 text-sm text-red-200">
           Couldn&apos;t save: {error}. Your sets are still here.

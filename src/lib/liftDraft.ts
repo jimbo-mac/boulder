@@ -5,6 +5,7 @@
 import { isValidISODate, type ISODate } from './dates'
 import type { Exercise, Tracking } from './exercises'
 import type { NewLiftSet } from './db/lifts'
+import type { SavedSet } from './db/history'
 
 export interface DraftSet {
   id: string
@@ -38,6 +39,26 @@ export function emptyDraft(date: ISODate): LiftDraft {
 
 export function isEmptyDraft(draft: LiftDraft): boolean {
   return draft.blocks.length === 0
+}
+
+/**
+ * Rebuild a draft from a saved workout's sets (already in order), for editing.
+ * Back-to-back sets of the same exercise become one block.
+ */
+export function draftFromSets(date: ISODate, sets: readonly SavedSet[]): LiftDraft {
+  const blocks: DraftBlock[] = []
+  for (const set of sets) {
+    const draftSet: DraftSet = {
+      id: newId(),
+      weight: String(set.weightLb),
+      reps: String(set.reps),
+      warmup: set.isWarmup,
+    }
+    const last = blocks.at(-1)
+    if (last && last.exerciseId === set.exerciseId) last.sets.push(draftSet)
+    else blocks.push({ id: newId(), exerciseId: set.exerciseId, exerciseName: set.exerciseName, sets: [draftSet] })
+  }
+  return { date, blocks }
 }
 
 function blankSet(): DraftSet {

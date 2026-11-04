@@ -38,19 +38,37 @@ export interface NewLiftSet extends LiftSet {
   exerciseId: string
 }
 
+function toSetsJson(sets: readonly NewLiftSet[]) {
+  return sets.map((set) => ({
+    exercise_id: set.exerciseId,
+    weight_lb: set.weightLb,
+    reps: set.reps,
+    is_warmup: set.isWarmup,
+  }))
+}
+
 /** Save a lift workout and its sets atomically, in the given order. Returns the workout id. */
 export async function logLift(date: ISODate, sets: readonly NewLiftSet[]): Promise<string> {
   const { data, error } = await supabase.rpc('log_lift', {
     p_date: date,
-    p_sets: sets.map((set) => ({
-      exercise_id: set.exerciseId,
-      weight_lb: set.weightLb,
-      reps: set.reps,
-      is_warmup: set.isWarmup,
-    })),
+    p_sets: toSetsJson(sets),
   })
   if (error) throw error
   return data
+}
+
+/** Replace a saved lift workout's date and all of its sets, atomically. */
+export async function updateLift(
+  workoutId: string,
+  date: ISODate,
+  sets: readonly NewLiftSet[],
+): Promise<void> {
+  const { error } = await supabase.rpc('update_lift', {
+    p_workout_id: workoutId,
+    p_date: date,
+    p_sets: toSetsJson(sets),
+  })
+  if (error) throw error
 }
 
 export interface DatedSet extends LiftSet {

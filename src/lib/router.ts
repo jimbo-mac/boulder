@@ -6,9 +6,22 @@ export type Route = (typeof ROUTES)[number]
 
 const DESKTOP_QUERY = '(min-width: 768px)'
 
+export interface Location {
+  route: Route
+  /** `#/history/<id>`: the workout being edited. */
+  workoutId: string | null
+}
+
 export function parseRoute(hash: string): Route | null {
-  const name = hash.replace(/^#\/?/, '')
-  return ROUTES.find((route) => route === name) ?? null
+  return parseLocation(hash)?.route ?? null
+}
+
+export function parseLocation(hash: string): Location | null {
+  const [name, id, ...rest] = hash.replace(/^#\/?/, '').split('/')
+  const route = ROUTES.find((r) => r === name)
+  if (!route || rest.length > 0) return null
+  if (id === undefined || id === '') return { route, workoutId: null }
+  return route === 'history' ? { route, workoutId: decodeURIComponent(id) } : null
 }
 
 /** No screen in the URL: Log on phones, Progress on desktop. */
@@ -22,15 +35,30 @@ export function routeHref(route: Route): string {
   return `#/${route}`
 }
 
+export function editWorkoutHref(workoutId: string): string {
+  return `#/history/${encodeURIComponent(workoutId)}`
+}
+
+export function navigate(href: string): void {
+  window.location.hash = href
+}
+
 function subscribe(onChange: () => void): () => void {
   window.addEventListener('hashchange', onChange)
   return () => window.removeEventListener('hashchange', onChange)
 }
 
-function currentRoute(): Route {
-  return parseRoute(window.location.hash) ?? defaultRoute()
+// useSyncExternalStore needs a stable snapshot, so cache by hash.
+let cached: { hash: string; location: Location } | null = null
+
+function currentLocation(): Location {
+  const hash = window.location.hash
+  if (cached?.hash !== hash) {
+    cached = { hash, location: parseLocation(hash) ?? { route: defaultRoute(), workoutId: null } }
+  }
+  return cached.location
 }
 
-export function useRoute(): Route {
-  return useSyncExternalStore(subscribe, currentRoute)
+export function useLocation(): Location {
+  return useSyncExternalStore(subscribe, currentLocation)
 }

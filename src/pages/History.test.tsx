@@ -38,6 +38,13 @@ describe('History', () => {
     expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument()
   })
 
+  it('links each workout to its edit screen', async () => {
+    mockListHistory.mockResolvedValue([makeRun(1)])
+    render(<History />)
+    const link = await screen.findByRole('link', { name: /Tue, Nov 3, 2026/ })
+    expect(link).toHaveAttribute('href', '#/history/w1')
+  })
+
   it('lists lifts with exercises, working sets, and volume (warm-ups excluded)', async () => {
     mockListHistory.mockResolvedValue([
       {

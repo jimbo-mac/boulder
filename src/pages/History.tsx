@@ -4,7 +4,7 @@ import { formatLongDate } from '../lib/dates'
 import { listHistory, type HistoryEntry, type LiftEntry, type RunEntry } from '../lib/db/history'
 import { formatDuration, formatMiles, formatPace, formatWeight } from '../lib/format'
 import { pace, totalVolume } from '../lib/metrics'
-import { routeHref } from '../lib/router'
+import { editWorkoutHref, routeHref } from '../lib/router'
 import { runKindLabel } from '../lib/runKinds'
 
 export const PAGE_SIZE = 50
@@ -102,8 +102,13 @@ export function History() {
       {entries && entries.length > 0 && (
         <ul className="flex flex-col divide-y divide-stone-800 rounded-xl border border-stone-800 bg-stone-900">
           {entries.map((entry) => (
-            <li key={entry.workoutId} className="flex items-center justify-between gap-3 px-4 py-3">
-              {entry.type === 'run' ? <RunRow run={entry} /> : <LiftRow lift={entry} />}
+            <li key={entry.workoutId}>
+              <a
+                href={editWorkoutHref(entry.workoutId)}
+                className="flex items-center justify-between gap-3 px-4 py-3 active:bg-stone-800 md:hover:bg-stone-800/50"
+              >
+                {entry.type === 'run' ? <RunRow run={entry} /> : <LiftRow lift={entry} />}
+              </a>
             </li>
           ))}
         </ul>

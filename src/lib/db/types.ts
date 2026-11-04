@@ -203,6 +203,20 @@ export type Database = {
         }
         Returns: string
       }
+      update_lift: {
+        Args: { p_date: string; p_sets: Json; p_workout_id: string }
+        Returns: undefined
+      }
+      update_run: {
+        Args: {
+          p_date: string
+          p_distance_mi: number
+          p_duration_s: number
+          p_run_kind: string
+          p_workout_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

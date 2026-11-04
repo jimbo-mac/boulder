@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { logRun } from '../lib/db/runs'
 import { Log } from './Log'
 
-vi.mock('../lib/db/runs', () => ({ logRun: vi.fn() }))
-vi.mock('../lib/db/lifts', () => ({ listExercises: vi.fn(), createExercise: vi.fn(), logLift: vi.fn() }))
+vi.mock('../lib/db/runs', () => ({ logRun: vi.fn(), updateRun: vi.fn() }))
+vi.mock('../lib/db/lifts', () => ({ listExercises: vi.fn(), createExercise: vi.fn(), logLift: vi.fn(), updateLift: vi.fn() }))
 const mockLogRun = vi.mocked(logRun)
 
 function fill({ distance, time }: { distance?: string; time?: string }) {
@@ -80,6 +80,7 @@ describe('Log run form', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Saved: Long · 6.20 mi · 1:05:00 · 10:29 /mi',
     )
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '#/history/workout-id')
     expect(mockLogRun).toHaveBeenCalledWith({
       date: '2026-11-01',
       distanceMi: 6.2,

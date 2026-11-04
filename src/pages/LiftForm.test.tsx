@@ -4,11 +4,12 @@ import { createExercise, listExercises, logLift } from '../lib/db/lifts'
 import { DRAFT_STORAGE_KEY } from '../lib/liftDraft'
 import { Log } from './Log'
 
-vi.mock('../lib/db/runs', () => ({ logRun: vi.fn() }))
+vi.mock('../lib/db/runs', () => ({ logRun: vi.fn(), updateRun: vi.fn() }))
 vi.mock('../lib/db/lifts', () => ({
   listExercises: vi.fn(),
   createExercise: vi.fn(),
   logLift: vi.fn(),
+  updateLift: vi.fn(),
 }))
 const mockList = vi.mocked(listExercises)
 const mockCreate = vi.mocked(createExercise)
@@ -54,6 +55,7 @@ describe('Lift logging', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Save workout' }))
     expect(await screen.findByRole('status')).toHaveTextContent('Saved: 1 exercise · 3 sets')
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '#/history/workout-id')
     expect(mockLogLift).toHaveBeenCalledWith('2026-11-04', [
       { exerciseId: 'ex-squat', weightLb: 45, reps: 10, isWarmup: true },
       { exerciseId: 'ex-squat', weightLb: 70, reps: 10, isWarmup: false },

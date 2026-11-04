@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { AppShell } from './components/AppShell'
 import { AuthGate } from './components/AuthGate'
-import { useRoute, type Route } from './lib/router'
+import { useLocation, type Location } from './lib/router'
+import { EditWorkout } from './pages/EditWorkout'
 import { History } from './pages/History'
 import { Log } from './pages/Log'
 import { Settings } from './pages/Settings'
@@ -9,8 +10,8 @@ import { Settings } from './pages/Settings'
 // Charts (Recharts) are big; load them only when Progress is opened.
 const Progress = lazy(() => import('./pages/Progress').then((m) => ({ default: m.Progress })))
 
-function Page({ route, email }: { route: Route; email: string }) {
-  switch (route) {
+function Page({ location, email }: { location: Location; email: string }) {
+  switch (location.route) {
     case 'log':
       return <Log />
     case 'progress':
@@ -20,17 +21,21 @@ function Page({ route, email }: { route: Route; email: string }) {
         </Suspense>
       )
     case 'history':
-      return <History />
+      return location.workoutId ? (
+        <EditWorkout key={location.workoutId} workoutId={location.workoutId} />
+      ) : (
+        <History />
+      )
     case 'settings':
       return <Settings email={email} />
   }
 }
 
 function SignedInApp({ email }: { email: string }) {
-  const route = useRoute()
+  const location = useLocation()
   return (
-    <AppShell route={route}>
-      <Page route={route} email={email} />
+    <AppShell route={location.route}>
+      <Page location={location} email={email} />
     </AppShell>
   )
 }

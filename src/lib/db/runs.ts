@@ -29,6 +29,18 @@ export async function logRun(run: NewRun): Promise<string> {
   return data
 }
 
+/** Replace a saved run's date, distance, time, and type, atomically. */
+export async function updateRun(workoutId: string, run: NewRun): Promise<void> {
+  const { error } = await supabase.rpc('update_run', {
+    p_workout_id: workoutId,
+    p_date: run.date,
+    p_distance_mi: run.distanceMi,
+    p_duration_s: run.durationS,
+    p_run_kind: run.kind,
+  })
+  if (error) throw error
+}
+
 const RUN_SELECT = 'id, date, created_at, runs!inner(distance_mi, duration_s, run_kind)' as const
 
 function baseQuery() {
