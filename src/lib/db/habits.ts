@@ -58,3 +58,25 @@ export async function setWeeklyGoal(habitId: string, weeklyGoal: number): Promis
   const { error } = await supabase.from('habits').update({ weekly_goal: weeklyGoal }).eq('id', habitId)
   if (error) throw error
 }
+
+/** Supabase returns at most 1000 rows per request; page well under that. */
+const PAGE = 1000
+
+/** Every check for these habits, oldest first. Streaks need full history. */
+export async function allChecks(habitIds: readonly string[]): Promise<HabitCheck[]> {
+  if (habitIds.length === 0) return []
+  const checks: HabitCheck[] = []
+  for (let offset = 0; ; offset += PAGE) {
+    const { data, error } = await supabase
+      .from('habit_checks')
+      .select('habit_id, date')
+      .in('habit_id', habitIds)
+      .order('date', { ascending: true })
+      .order('habit_id', { ascending: true })
+      .range(offset, offset + PAGE - 1)
+    if (error) throw error
+    checks.push(...data.map((row) => ({ habitId: row.habit_id, date: row.date })))
+    if (data.length < PAGE) break
+  }
+  return checks
+}

@@ -19,12 +19,18 @@ describe('StretchForm', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 10, 4, 9, 0)) // Wed Nov 4 2026
     mockList.mockReset().mockResolvedValue([posture, general])
-    mockChecks.mockReset().mockResolvedValue([
+    const saved = [
       { habitId: 'p', date: '2026-11-02' },
       { habitId: 'p', date: '2026-11-03' },
       { habitId: 'g', date: '2026-11-03' },
       { habitId: 'g', date: '2026-10-29' },
-    ])
+    ]
+    // Like the real query: only the habits asked for, within the dates.
+    mockChecks
+      .mockReset()
+      .mockImplementation((ids, from, to) =>
+        Promise.resolve(saved.filter((c) => ids.includes(c.habitId) && c.date >= from && c.date <= to)),
+      )
     mockSet.mockReset().mockResolvedValue()
   })
   afterEach(() => {

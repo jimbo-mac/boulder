@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { DateLineChart } from '../components/DateLineChart'
 import { PR_COLOR } from '../components/prMarker'
-import { cardClass, chipClass, inputClass, labelClass } from '../components/ui'
+import { RangePicker } from '../components/RangePicker'
+import { cardClass, inputClass, labelClass } from '../components/ui'
 import { WeeklyBarChart } from '../components/WeeklyBarChart'
 import { formatShortDate, todayLocal, weekStart, type ISODate } from '../lib/dates'
 import { allSets, listExercises, type DatedSet } from '../lib/db/lifts'
@@ -15,7 +16,7 @@ import {
   weeklyVolume,
   type LiftPR,
 } from '../lib/metrics'
-import { DEFAULT_RANGE, RANGES, rangeStart, type RangeValue } from '../lib/ranges'
+import { DEFAULT_RANGE, rangeStart, type RangeValue } from '../lib/ranges'
 import { routeHref } from '../lib/router'
 import { useAsync } from '../lib/useAsync'
 
@@ -125,19 +126,7 @@ export function LiftingProgress() {
         </select>
       </div>
 
-      <div className="flex gap-2" role="group" aria-label="Time range">
-        {RANGES.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={range === option.value}
-            onClick={() => setRange(option.value)}
-            className={`${chipClass(range === option.value)} flex-1 md:flex-none md:px-4`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      <RangePicker value={range} onChange={setRange} />
 
       {sets.error && (
         <p role="alert" className="rounded-lg bg-red-950 px-4 py-3 text-sm text-red-200">

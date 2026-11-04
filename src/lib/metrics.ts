@@ -429,3 +429,47 @@ export function daysDoneInMonth(doneDates: readonly ISODate[], date: ISODate): n
   const month = date.slice(0, 7)
   return new Set(doneDates.filter((d) => d.slice(0, 7) === month)).size
 }
+
+export interface GoalWeek {
+  /** Monday that starts the week. */
+  weekStart: ISODate
+  done: number
+  met: boolean
+  /** False for the week containing `to` (still in progress). */
+  complete: boolean
+}
+
+/**
+ * One entry per Monday-start week from the week containing `from` through the week
+ * containing `to`, with days done against the weekly goal. Days after `to` don't count.
+ */
+export function goalWeeks(
+  doneDates: readonly ISODate[],
+  from: ISODate,
+  to: ISODate,
+  goal: number,
+): GoalWeek[] {
+  const upToTo = doneDates.filter((d) => d <= to)
+  return [...emptyWeeks(from, to).keys()].map((week) => {
+    const { done, met } = weeklyGoalProgress(upToTo, week, goal)
+    return { weekStart: week, done, met, complete: addDays(week, 6) < to }
+  })
+}
+
+/**
+ * Weeks in a row the goal was met, counting back from this week. This week only
+ * counts once its goal is met; until then the streak runs through last week, so
+ * it doesn't reset every Monday.
+ */
+export function goalStreak(doneDates: readonly ISODate[], today: ISODate, goal: number): number {
+  const upToToday = doneDates.filter((d) => d <= today)
+  let week = weekStart(today)
+  let streak = 0
+  if (weeklyGoalProgress(upToToday, week, goal).met) streak = 1
+  week = addDays(week, -7)
+  while (weeklyGoalProgress(upToToday, week, goal).met) {
+    streak += 1
+    week = addDays(week, -7)
+  }
+  return streak
+}

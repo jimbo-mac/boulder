@@ -8,5 +8,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
+    // 20 jsdom files in parallel can make a single test take several seconds.
+    testTimeout: 15_000,
   },
 })

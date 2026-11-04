@@ -132,10 +132,13 @@ Navigation (Log, Progress, History, Settings): bottom tab bar on phones, top tab
    - Stretch: two routines, Posture and General (fixed for now), each a yes/no per day with a weekly goal (days per week, set in Settings). No streaks.
      - Two big toggles act on the selected day (default today): one tap checks it off and saves immediately; tap again to undo. Each shows "N of goal this week" (Monday-start week).
      - Month calendar (Monday first) with two small dots per day — Posture left (blue), General right (orange), hollow when not done — plus a legend and "This month: N days" per routine. Tap a past day to select it and check off something forgotten; future days are disabled.
-     - Not shown in History or Progress.
+     - Not shown in History; Progress has a read-only Stretching view.
 2. **Progress** (default on desktop)
    - Running tab: weekly mileage (bar) with this-week / weekly-avg / total tiles; pace over time per run type (dots per run + 5-run average line, normal y-axis (lower = faster), "current" and "change in range" figures), long-run distance (line), goal-pace reference line + predicted race time card, PR markers on the pace and long-run charts, recent run PRs list
    - Lifting tab: est. 1RM per exercise (line, exercise selector), weekly volume for the selected exercise (bar; reps-only exercises show total reps per week), recent PRs list
+   - Stretching tab: read-only, one card per routine. Figures: this week (N of goal), week streak, goal met (N of M weeks in range). Week grid: a column per Monday-start week, a row per weekday, a filled square per day done (hollow = not done, blank = future), and under each week ✓ met / – missed / · in progress.
+     - Week streak = weeks in a row the goal was met, counting back from this week; this week counts only once met (otherwise the streak runs through last week). Uses all history, not the range.
+     - "Goal met" counts finished weeks in the range, plus this week once met. Past weeks are judged against the current goal (goal changes aren't stored).
    - Time range selector: 1w / 1m / 3m, default 1m (whole Mon–Sun weeks: 1, 4, 13). Kept short while there is little data; 6m / 1y / All can come back later. PRs are always judged against all history.
 3. **History** — reverse-chronological list of runs and lifts (lifts show exercises, working sets, volume). Tap a workout to edit it (`#/history/<id>`) in the same form it was logged with, or delete it (with a confirm). Edits are atomic (`update_lift` / `update_run`) and never touch the on-device lift draft. After saving a new workout, the "Saved" message links straight to its edit screen.
 4. **Settings** — goal race (optional name + date; distance via 5K / 10K / Half / Marathon presets or custom; goal time), weekly stretching goals (− / + per routine, 1–7 days, saves on tap), sign out, export all data as JSON.

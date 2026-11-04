@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { habitColor as colorOf } from '../components/habitColors'
 import { cardClass, errorMessage } from '../components/ui'
 import {
   addDays,
@@ -16,16 +17,10 @@ import { daysDoneInMonth, weeklyGoalProgress } from '../lib/metrics'
 import { routeHref } from '../lib/router'
 import { useAsync } from '../lib/useAsync'
 
-// Fixed order (dataviz palette slots 1–2, validated on the stone-900 card).
 // Dot position (left/right) also identifies the routine, so color is never alone.
-const HABIT_COLORS = ['#3987e5', '#d95926'] as const
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
 
 const key = (habitId: string, date: ISODate) => `${habitId}|${date}`
-
-function colorOf(index: number): string {
-  return HABIT_COLORS[index % HABIT_COLORS.length] ?? HABIT_COLORS[0]
-}
 
 function Dot({ color, size = 8, hollow = false }: { color: string; size?: number; hollow?: boolean }) {
   const r = size / 2 - 1
@@ -45,10 +40,24 @@ function Dot({ color, size = 8, hollow = false }: { color: string; size?: number
 
 /** Log > Stretch: check off each routine per day, see the month, track the weekly goal. */
 export function StretchForm() {
+  const habits = useAsync('habits:stretch', () => listHabits('stretch'))
+
+  if (habits.error) {
+    return (
+      <p role="alert" className="rounded-lg bg-red-950 px-4 py-3 text-sm text-red-200">
+        Couldn&apos;t load stretching routines: {habits.error}
+      </p>
+    )
+  }
+  if (habits.data === undefined) return <p className="text-stone-400">Loading…</p>
+  // Mounted once the routines are known, so it never requests checks for no habits.
+  return <StretchDays list={habits.data} />
+}
+
+function StretchDays({ list }: { list: Habit[] }) {
   const today = todayLocal()
   const [selected, setSelected] = useState<ISODate>(today)
   const [month, setMonth] = useState<ISODate>(monthStart(today))
-  const habits = useAsync('habits:stretch', () => listHabits('stretch'))
 
   const weeks = monthGrid(month)
   const selectedWeek = weekStart(selected)
@@ -58,7 +67,6 @@ export function StretchForm() {
   const from = selectedWeek < gridFrom ? selectedWeek : gridFrom
   const to = addDays(selectedWeek, 6) > gridTo ? addDays(selectedWeek, 6) : gridTo
 
-  const list = habits.data ?? []
   const ids = list.map((h) => h.id)
   const checks = useAsync(`checks:${ids.join(',')}:${from}..${to}`, () => checksBetween(ids, from, to))
 
@@ -87,15 +95,6 @@ export function StretchForm() {
     )
     queue.current.set(k, next)
   }
-
-  if (habits.error) {
-    return (
-      <p role="alert" className="rounded-lg bg-red-950 px-4 py-3 text-sm text-red-200">
-        Couldn&apos;t load stretching routines: {habits.error}
-      </p>
-    )
-  }
-  if (habits.data === undefined) return <p className="text-stone-400">Loading…</p>
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(selectedWeek, i))
   const monthDays = weeks.flat().filter((d) => d.slice(0, 7) === month.slice(0, 7))

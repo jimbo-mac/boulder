@@ -83,6 +83,13 @@ describe('Progress (running)', () => {
     )
   })
 
+  it('offers Running, Lifting, and Stretching', async () => {
+    render(<Progress />)
+    const group = screen.getByRole('group', { name: 'Progress type' })
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Running', 'Lifting', 'Stretching'])
+    await screen.findAllByRole('listitem')
+  })
+
   it('offers only 1w, 1m, and 3m', async () => {
     render(<Progress />)
     const group = await screen.findByRole('group', { name: 'Time range' })

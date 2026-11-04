@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysDoneInMonth, goalPace, pace, paceTrend, predictRaceTime, riegel, runPRs, weeklyGoalProgress, weeklyMileage, type RunPRInput } from './metrics'
+import { daysDoneInMonth, goalPace, goalStreak, goalWeeks, pace, paceTrend, predictRaceTime, riegel, runPRs, weeklyGoalProgress, weeklyMileage, type RunPRInput } from './metrics'
 
 describe('riegel', () => {
   it('returns the same time for the same distance', () => {
@@ -288,5 +288,50 @@ describe('daysDoneInMonth', () => {
   it('counts distinct days in the same month only', () => {
     expect(daysDoneInMonth(['2026-10-31', '2026-11-01', '2026-11-01', '2026-11-30', '2026-12-01'], '2026-11-15')).toBe(2)
     expect(daysDoneInMonth([], '2026-11-15')).toBe(0)
+  })
+})
+
+describe('goalWeeks', () => {
+  const done = ['2026-10-12', '2026-10-14', '2026-10-21', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-06']
+  it('gives each week from `from` through `to` with done, met, and complete', () => {
+    expect(goalWeeks(done, '2026-10-12', '2026-11-04', 2)).toEqual([
+      { weekStart: '2026-10-12', done: 2, met: true, complete: true },
+      { weekStart: '2026-10-19', done: 1, met: false, complete: true },
+      { weekStart: '2026-10-26', done: 0, met: false, complete: true },
+      // Nov 6 is after `to`, so it doesn't count yet.
+      { weekStart: '2026-11-02', done: 3, met: true, complete: false },
+    ])
+  })
+  it('treats the week ending on `to` (Sunday) as still in progress', () => {
+    expect(goalWeeks([], '2026-11-08', '2026-11-08', 1)).toEqual([
+      { weekStart: '2026-11-02', done: 0, met: false, complete: false },
+    ])
+  })
+  it('rejects a backwards range and a bad goal', () => {
+    expect(() => goalWeeks([], '2026-11-04', '2026-10-01', 3)).toThrow(RangeError)
+    expect(() => goalWeeks([], '2026-10-01', '2026-11-04', 0)).toThrow(RangeError)
+  })
+})
+
+describe('goalStreak', () => {
+  // Weeks start Oct 12, 19, 26, Nov 2 (current; today Wed Nov 4).
+  const twoPerWeek = ['2026-10-19', '2026-10-20', '2026-10-26', '2026-10-30']
+
+  it('counts weeks in a row back from last week while this week is unmet', () => {
+    expect(goalStreak([...twoPerWeek, '2026-11-02'], '2026-11-04', 2)).toBe(2)
+  })
+  it('includes this week once its goal is met', () => {
+    expect(goalStreak([...twoPerWeek, '2026-11-02', '2026-11-03'], '2026-11-04', 2)).toBe(3)
+  })
+  it('stops at the first missed week', () => {
+    // Oct 12 week met, Oct 19 missed, Oct 26 met.
+    expect(goalStreak(['2026-10-12', '2026-10-13', '2026-10-19', '2026-10-26', '2026-10-27'], '2026-11-04', 2)).toBe(1)
+  })
+  it('is 0 when last week missed and this week is not met yet', () => {
+    expect(goalStreak(['2026-10-19', '2026-10-20'], '2026-11-04', 2)).toBe(0)
+    expect(goalStreak([], '2026-11-04', 1)).toBe(0)
+  })
+  it('ignores days after today', () => {
+    expect(goalStreak(['2026-11-05', '2026-11-06'], '2026-11-04', 2)).toBe(0)
   })
 })

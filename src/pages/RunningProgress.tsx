@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { LongRunChart } from '../components/LongRunChart'
 import { PR_COLOR } from '../components/prMarker'
 import { PaceTrendChart } from '../components/PaceTrendChart'
+import { RangePicker } from '../components/RangePicker'
 import { cardClass, chipClass } from '../components/ui'
 import { WeeklyMileageChart } from '../components/WeeklyMileageChart'
 import { addDays, formatLongDate, formatShortDate, todayLocal, toDayNumber, weekStart } from '../lib/dates'
@@ -10,7 +11,7 @@ import { getSettings, type Settings } from '../lib/db/settings'
 import { formatDuration, formatMiles, formatPace, formatPaceChange } from '../lib/format'
 import { goalPace, pace, paceTrend, predictRaceTime, runPRs, weeklyMileage, type RunPR } from '../lib/metrics'
 import { describeDistance } from '../lib/races'
-import { DEFAULT_RANGE, RANGES, rangeStart, type RangeValue } from '../lib/ranges'
+import { DEFAULT_RANGE, rangeStart, type RangeValue } from '../lib/ranges'
 import { routeHref } from '../lib/router'
 import { RUN_KINDS, runKindLabel, type RunKind } from '../lib/runKinds'
 import { useAsync } from '../lib/useAsync'
@@ -79,19 +80,7 @@ export function RunningProgress() {
     <div className="flex flex-col gap-4">
       {goal && <GoalCard goal={goal} today={today} />}
 
-      <div className="flex gap-2" role="group" aria-label="Time range">
-        {RANGES.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={range === option.value}
-            onClick={() => setRange(option.value)}
-            className={`${chipClass(range === option.value)} flex-1 md:flex-none md:px-4`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      <RangePicker value={range} onChange={setRange} />
 
       {ranged.error && (
         <p role="alert" className="rounded-lg bg-red-950 px-4 py-3 text-sm text-red-200">
