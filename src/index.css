@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+/*
+ * iOS Safari sizes date inputs by its own rules (an empty one can overflow its
+ * container) and centers the value. Make them behave like the other inputs.
+ */
+input[type='date'] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+}
+input[type='date']::-webkit-date-and-time-value {
+  text-align: left;
+}
