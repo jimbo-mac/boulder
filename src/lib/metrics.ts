@@ -477,17 +477,23 @@ export function goalStreak(doneDates: readonly ISODate[], today: ISODate, goal: 
 // --- Daily habits ------------------------------------------------------------------
 
 /**
- * Days in a row a habit was done, counting back from today. An unchecked today
+ * Days in a row a habit was done, counting back from today. A blank today
  * doesn't break it (the day isn't over): the streak then runs through yesterday.
- * Days after `today` are ignored.
+ * Today marked missed (✗) does: the streak is 0. Days after `today` are ignored.
  */
-export function dailyStreak(doneDates: readonly ISODate[], today: ISODate): number {
+export function dailyStreak(
+  doneDates: readonly ISODate[],
+  today: ISODate,
+  /** Days explicitly marked missed (✓ / ✗ habits). */
+  missedDates: readonly ISODate[] = [],
+): number {
   const done = new Set(doneDates)
-  return dailyStreakWhere((day) => done.has(day), today)
+  return dailyStreakWhere((day) => done.has(day), today, missedDates.includes(today))
 }
 
 /** dailyStreak for any "was it done on this day?" lookup. */
-export function dailyStreakWhere(isDone: (day: ISODate) => boolean, today: ISODate): number {
+export function dailyStreakWhere(isDone: (day: ISODate) => boolean, today: ISODate, missedToday = false): number {
+  if (missedToday) return 0
   let day = isDone(today) ? today : addDays(today, -1)
   let streak = 0
   while (isDone(day)) {

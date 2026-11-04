@@ -6,7 +6,7 @@ import { Log } from './Log'
 
 vi.mock('../lib/db/runs', () => ({ logRun: vi.fn(), updateRun: vi.fn() }))
 vi.mock('../lib/db/lifts', () => ({ listExercises: vi.fn(), createExercise: vi.fn(), logLift: vi.fn(), updateLift: vi.fn() }))
-vi.mock('../lib/db/habits', () => ({ listHabits: vi.fn(), checksBetween: vi.fn(), setCheck: vi.fn() }))
+vi.mock('../lib/db/habits', () => ({ listHabits: vi.fn(), checksBetween: vi.fn(), setMark: vi.fn() }))
 const mockLogRun = vi.mocked(logRun)
 
 function fill({ distance, time }: { distance?: string; time?: string }) {

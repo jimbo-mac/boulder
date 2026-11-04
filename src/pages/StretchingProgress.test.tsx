@@ -7,8 +7,8 @@ vi.mock('../lib/db/habits', () => ({ listHabits: vi.fn(), allChecks: vi.fn() }))
 const mockList = vi.mocked(listHabits)
 const mockChecks = vi.mocked(allChecks)
 
-const p = (date: string) => ({ habitId: 'p', date, minutes: null })
-const g = (date: string) => ({ habitId: 'g', date, minutes: null })
+const p = (date: string) => ({ habitId: 'p', date, minutes: null, done: true })
+const g = (date: string) => ({ habitId: 'g', date, minutes: null, done: true })
 
 function card(name: string): HTMLElement {
   return screen.getByRole('heading', { name }).closest('section') as HTMLElement

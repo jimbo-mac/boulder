@@ -66,16 +66,19 @@ export type Database = {
       habit_checks: {
         Row: {
           date: string
+          done: boolean
           habit_id: string
           minutes: number | null
         }
         Insert: {
           date: string
+          done?: boolean
           habit_id: string
           minutes?: number | null
         }
         Update: {
           date?: string
+          done?: boolean
           habit_id?: string
           minutes?: number | null
         }

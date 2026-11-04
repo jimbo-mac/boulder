@@ -73,7 +73,7 @@ habits                          -- yes/no daily habits with a weekly goal
   user_id       uuid
   kind          'stretch' | 'habit'   -- Log > Stretch or Log > Habits
   name          text            -- unique per user + kind among habits in use; Stretch has Posture, General
-  tracking      'check' | 'minutes', default 'check'  -- minutes = an amount per day (Screen time, built in)
+  tracking      'check' | 'yesno' | 'minutes', default 'check'  -- yesno = each day ✓ or ✗; minutes = an amount per day (Screen time, built in)
   archived_at   timestamptz, nullable  -- hidden from Log/Progress; history kept
   weekly_goal   integer 1–7, default 3
   sort_order    integer
@@ -82,6 +82,7 @@ habit_checks                    -- a row = done (or logged) that local day; unch
   habit_id      uuid, fk -> habits (cascade delete)
   date          date
   minutes       integer 0–1439, nullable  -- minutes habits only
+  done          boolean, default true     -- false = marked missed (✗), yesno habits only
   primary key (habit_id, date)
 ```
 
@@ -137,7 +138,8 @@ Navigation (Log, Progress, History, Settings): bottom tab bar on phones, top tab
      - Month calendar (Monday first) with two small dots per day — Posture left (blue), General right (orange), hollow when not done — plus a legend and "This month: N days" per routine. Tap a past day to select it and check off something forgotten; future days are disabled.
      - Not shown in History; Progress has a read-only Stretching view.
    - Habits: check-off habits the user adds in Settings, plus built-in Screen time. Same selected-day + month calendar as Stretch (each day shows ✓ when all check-offs are done, else "done/total").
-     - Check-offs: one full-width toggle per habit for the selected day, showing its daily streak ("N days in a row"). Streak = consecutive days ending today; an unchecked today doesn't break it (runs through yesterday). Uses all history.
+     - Check-offs: one full-width toggle per habit for the selected day, showing its daily streak ("N days in a row"). Streak = consecutive ✓ days ending today; an unchecked today doesn't break it (runs through yesterday), but today marked ✗ makes it 0. Uses all history.
+     - ✓ / ✗ habits (opt-in per habit in Settings): two buttons instead of a toggle; tapping the selected one clears the day. ✗ is stored as a miss (shown as ✗ in the Progress grid), not just a blank day.
      - Screen time: one hours:minutes field (`215` → `2:15`, minutes < 60, under 24h) with Save, and Clear for a logged day. Trend only, no limit.
 2. **Progress** (default on desktop)
    - Running tab: weekly mileage (bar) with this-week / weekly-avg / total tiles; pace over time per run type (dots per run + 5-run average line, normal y-axis (lower = faster), "current" and "change in range" figures), long-run distance (line), goal-pace reference line + predicted race time card, PR markers on the pace and long-run charts, recent run PRs list
@@ -148,7 +150,7 @@ Navigation (Log, Progress, History, Settings): bottom tab bar on phones, top tab
    - Habits tab (4 options sit 2×2 on phones): Screen time card — average per logged day in range, change vs the same number of days just before, days logged, and a daily bar chart with a trailing 7-day average line (lower = better). One card per check-off habit — current streak, best streak, days done in range, and the week grid with days done under each week.
    - Time range selector: 1w / 1m / 3m, default 1m (whole Mon–Sun weeks: 1, 4, 13). Kept short while there is little data; 6m / 1y / All can come back later. PRs are always judged against all history.
 3. **History** — reverse-chronological list of runs and lifts (lifts show exercises, working sets, volume). Tap a workout to edit it (`#/history/<id>`) in the same form it was logged with, or delete it (with a confirm). Edits are atomic (`update_lift` / `update_run`) and never touch the on-device lift draft. After saving a new workout, the "Saved" message links straight to its edit screen.
-4. **Settings** — goal race (optional name + date; distance via 5K / 10K / Half / Marathon presets or custom; goal time), habits (add, rename, remove = archive with a confirm; Screen time is built in and not listed), weekly stretching goals (− / + per routine, 1–7 days, saves on tap), sign out, export all data as JSON.
+4. **Settings** — goal race (optional name + date; distance via 5K / 10K / Half / Marathon presets or custom; goal time), habits (add, rename, remove = archive with a confirm, and a per-habit "Log with ✓ / ✗" checkbox; Screen time is built in and not listed), weekly stretching goals (− / + per routine, 1–7 days, saves on tap), sign out, export all data as JSON.
    - Progress shows a goal card above the range selector: goal time + pace, predicted time + pace, gap, days to go, and which run the prediction used.
 
 ### PR detection

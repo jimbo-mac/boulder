@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { archiveHabit, createHabit, listHabits, renameHabit, setWeeklyGoal } from '../lib/db/habits'
+import { archiveHabit, createHabit, listHabits, renameHabit, setHabitTracking, setWeeklyGoal } from '../lib/db/habits'
 import { getSettings, saveSettings } from '../lib/db/settings'
 import { Settings } from './Settings'
 
@@ -11,6 +11,7 @@ vi.mock('../lib/db/habits', () => ({
   createHabit: vi.fn(),
   renameHabit: vi.fn(),
   archiveHabit: vi.fn(),
+  setHabitTracking: vi.fn(),
 }))
 const mockListHabits = vi.mocked(listHabits)
 const mockSetWeeklyGoal = vi.mocked(setWeeklyGoal)
@@ -194,5 +195,18 @@ describe('Settings habits', () => {
     await waitFor(() => expect(screen.queryByText('Read')).not.toBeInTheDocument())
     expect(archiveHabit).toHaveBeenCalledWith('h1')
     confirm.mockRestore()
+  })
+
+  it('switches a habit to ✓ / ✗ logging and back', async () => {
+    vi.mocked(setHabitTracking).mockReset().mockResolvedValue()
+    render(<Settings email="me@example.com" />)
+    const box = await screen.findByRole('checkbox', { name: /Log with ✓ \/ ✗/ })
+    expect(box).not.toBeChecked()
+    fireEvent.click(box)
+    await waitFor(() => expect(box).toBeChecked())
+    expect(setHabitTracking).toHaveBeenCalledWith('h1', 'yesno')
+    fireEvent.click(box)
+    await waitFor(() => expect(box).not.toBeChecked())
+    expect(setHabitTracking).toHaveBeenLastCalledWith('h1', 'check')
   })
 })

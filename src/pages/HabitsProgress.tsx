@@ -59,7 +59,8 @@ function Habits({ list, checks }: { list: Habit[]; checks: HabitCheck[] }) {
     return map
   }, [checks])
 
-  const checkHabits = list.filter((h) => h.tracking === 'check')
+  // Tap-to-check and ✓ / ✗ habits.
+  const checkHabits = list.filter((h) => h.tracking !== 'minutes')
   const minuteHabits = list.filter((h) => h.tracking === 'minutes')
 
   return (
@@ -83,7 +84,8 @@ function Habits({ list, checks }: { list: Habit[]; checks: HabitCheck[] }) {
         <CheckCard
           key={habit.id}
           habit={habit}
-          dates={(byHabit.get(habit.id) ?? []).map((c) => c.date)}
+          dates={(byHabit.get(habit.id) ?? []).filter((c) => c.done).map((c) => c.date)}
+          missedDates={(byHabit.get(habit.id) ?? []).filter((c) => !c.done).map((c) => c.date)}
           from={from}
           today={today}
         />
@@ -92,9 +94,24 @@ function Habits({ list, checks }: { list: Habit[]; checks: HabitCheck[] }) {
   )
 }
 
-function CheckCard({ habit, dates, from, today }: { habit: Habit; dates: ISODate[]; from: ISODate; today: ISODate }) {
+function CheckCard({
+  habit,
+  dates,
+  missedDates,
+  from,
+  today,
+}: {
+  habit: Habit
+  /** Days done (✓). */
+  dates: ISODate[]
+  /** Days marked missed (✗); empty for tap-to-check habits. */
+  missedDates: ISODate[]
+  from: ISODate
+  today: ISODate
+}) {
   const done = new Set(dates)
-  const current = dailyStreak(dates, today)
+  const missed = new Set(missedDates)
+  const current = dailyStreak(dates, today, missedDates)
   const best = bestStreak(dates, today)
   const rangeDays = toDayNumber(today) - toDayNumber(from) + 1
   const doneInRange = dates.filter((d) => d >= from && d <= today).length
@@ -114,8 +131,17 @@ function CheckCard({ habit, dates, from, today }: { habit: Habit; dates: ISODate
         <Figure label="Best streak" value={daysText(best)} />
         <Figure label="Done" value={`${doneInRange} of ${rangeDays}`} detail="days in range" />
       </div>
-      <WeekGrid name={habit.name} color={HABIT_COLOR} weeks={weeks} isDone={(d) => done.has(d)} today={today} />
-      <p className="text-xs text-stone-500">Number under each week = days done.</p>
+      <WeekGrid
+        name={habit.name}
+        color={HABIT_COLOR}
+        weeks={weeks}
+        isDone={(d) => done.has(d)}
+        isMissed={(d) => missed.has(d)}
+        today={today}
+      />
+      <p className="text-xs text-stone-500">
+        Number under each week = days done.{habit.tracking === 'yesno' && ' ✗ = marked missed.'}
+      </p>
     </section>
   )
 }

@@ -48,6 +48,7 @@ export function WeekGrid({
   isDone,
   today,
   resultLabel,
+  isMissed,
 }: {
   name: string
   color: string
@@ -56,6 +57,8 @@ export function WeekGrid({
   today: ISODate
   /** Heading for a third table column holding each week's `result`. */
   resultLabel?: string
+  /** Days marked missed (✗) get a small ✗ instead of an empty square. */
+  isMissed?: (date: ISODate) => boolean
 }) {
   const spans = monthSpans(weeks)
   const columns = `1rem repeat(${weeks.length}, minmax(0, 1.75rem))`
@@ -99,12 +102,15 @@ export function WeekGrid({
               // Future days: blank, but keep the row's height.
               if (date > today) return <span key={date} className="aspect-square" />
               const done = isDone(date)
+              const missed = !done && (isMissed?.(date) ?? false)
               return (
                 <span
                   key={date}
-                  className="aspect-square rounded-sm"
+                  className="flex aspect-square items-center justify-center rounded-sm text-[10px] leading-none text-stone-400"
                   style={done ? { backgroundColor: color } : { boxShadow: `inset 0 0 0 1px ${HOLLOW}` }}
-                />
+                >
+                  {missed ? '✗' : ''}
+                </span>
               )
             })}
           </div>

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { archiveHabit, createHabit, listHabits, renameHabit, type Habit } from '../lib/db/habits'
+import { archiveHabit, createHabit, listHabits, renameHabit, setHabitTracking, type Habit } from '../lib/db/habits'
 import { useAsync } from '../lib/useAsync'
 import { errorMessage, inputClass, linkButtonClass } from './ui'
 
@@ -19,7 +19,7 @@ export function HabitsManager() {
   if (loaded.data === undefined) return <p className="text-stone-400">Loading…</p>
 
   // Screen time is built in; only check-off habits are managed here.
-  const habits = (edited ?? loaded.data).filter((h) => h.tracking === 'check')
+  const habits = (edited ?? loaded.data).filter((h) => h.tracking !== 'minutes')
   const all = edited ?? loaded.data
 
   async function run(action: () => Promise<Habit[]>) {
@@ -57,6 +57,12 @@ export function HabitsManager() {
               run(async () => {
                 await renameHabit(habit.id, name)
                 return all.map((h) => (h.id === habit.id ? { ...h, name: name.trim() } : h))
+              })
+            }
+            onTracking={(tracking) =>
+              void run(async () => {
+                await setHabitTracking(habit.id, tracking)
+                return all.map((h) => (h.id === habit.id ? { ...h, tracking } : h))
               })
             }
             onArchive={() => {
@@ -104,11 +110,13 @@ function HabitRow({
   habit,
   busy,
   onRename,
+  onTracking,
   onArchive,
 }: {
   habit: Habit
   busy: boolean
   onRename: (name: string) => Promise<boolean>
+  onTracking: (tracking: 'check' | 'yesno') => void
   onArchive: () => void
 }) {
   const [editing, setEditing] = useState(false)
@@ -155,28 +163,40 @@ function HabitRow({
   }
 
   return (
-    <li className="flex items-center justify-between gap-2">
-      <span className="min-w-0 truncate font-medium">{habit.name}</span>
-      <span className="flex shrink-0 gap-2">
-        <button
-          type="button"
-          aria-label={`Rename ${habit.name}`}
-          onClick={() => setEditing(true)}
+    <li className="flex flex-col gap-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="min-w-0 truncate font-medium">{habit.name}</span>
+        <span className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            aria-label={`Rename ${habit.name}`}
+            onClick={() => setEditing(true)}
+            disabled={busy}
+            className={smallButton}
+          >
+            Rename
+          </button>
+          <button
+            type="button"
+            aria-label={`Remove ${habit.name}`}
+            onClick={onArchive}
+            disabled={busy}
+            className={smallButton}
+          >
+            Remove
+          </button>
+        </span>
+      </div>
+      <label className="flex min-h-11 items-center gap-2 text-sm text-stone-400">
+        <input
+          type="checkbox"
+          checked={habit.tracking === 'yesno'}
           disabled={busy}
-          className={smallButton}
-        >
-          Rename
-        </button>
-        <button
-          type="button"
-          aria-label={`Remove ${habit.name}`}
-          onClick={onArchive}
-          disabled={busy}
-          className={smallButton}
-        >
-          Remove
-        </button>
-      </span>
+          onChange={(e) => onTracking(e.target.checked ? 'yesno' : 'check')}
+          className="h-5 w-5 accent-stone-100"
+        />
+        Log with ✓ / ✗ (record misses)
+      </label>
     </li>
   )
 }

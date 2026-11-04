@@ -2,8 +2,16 @@ import type { ISODate } from '../dates'
 import { supabase } from './client'
 
 export type HabitKind = 'stretch' | 'habit'
-/** 'check' = done or not each day; 'minutes' = an amount each day (screen time). */
-export type HabitTracking = 'check' | 'minutes'
+/**
+ * 'check'   = tap to mark done; a blank day is not done.
+ * 'yesno'   = mark each day done (✓) or missed (✗).
+ * 'minutes' = an amount each day (screen time).
+ */
+export type HabitTracking = 'check' | 'yesno' | 'minutes'
+
+function toTracking(value: string): HabitTracking {
+  return value === 'minutes' || value === 'yesno' ? value : 'check'
+}
 
 export interface Habit {
   id: string
@@ -26,7 +34,7 @@ export async function listHabits(kind: HabitKind): Promise<Habit[]> {
   return data.map((row) => ({
     id: row.id,
     name: row.name,
-    tracking: row.tracking === 'minutes' ? 'minutes' : 'check',
+    tracking: toTracking(row.tracking),
     weeklyGoal: row.weekly_goal,
   }))
 }
@@ -53,6 +61,12 @@ export async function renameHabit(habitId: string, name: string): Promise<void> 
   if (error) throw friendlyNameError(error, trimmed) ?? error
 }
 
+/** Switch a check-off habit between tap-to-check and ✓ / ✗. */
+export async function setHabitTracking(habitId: string, tracking: 'check' | 'yesno'): Promise<void> {
+  const { error } = await supabase.from('habits').update({ tracking }).eq('id', habitId)
+  if (error) throw error
+}
+
 /** Hide a habit from Log and Progress. Its history is kept. */
 export async function archiveHabit(habitId: string): Promise<void> {
   const { error } = await supabase
@@ -67,12 +81,14 @@ export interface HabitCheck {
   date: ISODate
   /** Minutes habits only; null for check-offs. */
   minutes: number | null
+  /** False when the day was marked missed (✗). */
+  done: boolean
 }
 
-const CHECK_SELECT = 'habit_id, date, minutes' as const
+const CHECK_SELECT = 'habit_id, date, minutes, done' as const
 
-function toCheck(row: { habit_id: string; date: string; minutes: number | null }): HabitCheck {
-  return { habitId: row.habit_id, date: row.date, minutes: row.minutes }
+function toCheck(row: { habit_id: string; date: string; minutes: number | null; done: boolean }): HabitCheck {
+  return { habitId: row.habit_id, date: row.date, minutes: row.minutes, done: row.done }
 }
 
 /** Entries for each habit with `from <= date <= to`. */
@@ -92,13 +108,19 @@ export async function checksBetween(
   return data.map(toCheck)
 }
 
-/** Mark a habit done or not done on a day. Safe to repeat. */
+/** Mark a habit done or not done (blank) on a day. Safe to repeat. */
 export async function setCheck(habitId: string, date: ISODate, done: boolean): Promise<void> {
-  const { error } = done
-    ? await supabase
-        .from('habit_checks')
-        .upsert({ habit_id: habitId, date }, { onConflict: 'habit_id,date', ignoreDuplicates: true })
-    : await supabase.from('habit_checks').delete().eq('habit_id', habitId).eq('date', date)
+  return setMark(habitId, date, done ? 'done' : null)
+}
+
+/** Mark a day done (✓), missed (✗), or clear it (null). Safe to repeat. */
+export async function setMark(habitId: string, date: ISODate, mark: 'done' | 'missed' | null): Promise<void> {
+  const { error } =
+    mark === null
+      ? await supabase.from('habit_checks').delete().eq('habit_id', habitId).eq('date', date)
+      : await supabase
+          .from('habit_checks')
+          .upsert({ habit_id: habitId, date, done: mark === 'done' }, { onConflict: 'habit_id,date' })
   if (error) throw error
 }
 

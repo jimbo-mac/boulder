@@ -351,6 +351,12 @@ describe('dailyStreak', () => {
   it('stops at a gap, crosses months, and ignores future days', () => {
     expect(dailyStreak(['2026-10-29', '2026-10-31', '2026-11-01', '2026-11-05'], '2026-11-01')).toBe(2)
   })
+  it('is 0 when today is marked missed, even after a run', () => {
+    expect(dailyStreak(['2026-11-02', '2026-11-03'], today, ['2026-11-04'])).toBe(0)
+  })
+  it('a miss on an earlier day ends the run like a blank day', () => {
+    expect(dailyStreak(['2026-11-01', '2026-11-03'], today, ['2026-11-02'])).toBe(1)
+  })
 })
 
 describe('bestStreak', () => {

@@ -1,11 +1,14 @@
 import { useMemo, useRef, useState } from 'react'
 import { addDays, monthGrid, monthStart, todayLocal, weekStart, type ISODate } from './dates'
-import { checksBetween, setCheck, setMinutes, type Habit, type HabitCheck } from './db/habits'
+import { checksBetween, setMark, setMinutes, type Habit, type HabitCheck } from './db/habits'
 import { errorMessage } from './errors'
 import { useAsync } from './useAsync'
 
-/** A habit's entry for a day: null = nothing logged; minutes is null for check-offs. */
-export type DayEntry = { minutes: number | null } | null
+/**
+ * A habit's entry for a day: null = nothing logged. `done` is false for a day
+ * marked missed (✗); `minutes` is null except for minutes habits.
+ */
+export type DayEntry = { minutes: number | null; done: boolean } | null
 
 const entryKey = (habitId: string, date: ISODate) => `${habitId}|${date}`
 
@@ -45,11 +48,11 @@ export function useHabitDays(
 
   const loaded = useMemo(() => {
     const map = new Map<string, DayEntry>()
-    for (const c of history) map.set(entryKey(c.habitId, c.date), { minutes: c.minutes })
+    for (const c of history) map.set(entryKey(c.habitId, c.date), { minutes: c.minutes, done: c.done })
     if (fresh) {
       // The window's load is the truth for its days, including days since cleared.
       for (let d = from; d <= to; d = addDays(d, 1)) for (const id of ids) map.delete(entryKey(id, d))
-      for (const c of fresh) map.set(entryKey(c.habitId, c.date), { minutes: c.minutes })
+      for (const c of fresh) map.set(entryKey(c.habitId, c.date), { minutes: c.minutes, done: c.done })
     }
     return map
     // ids/from/to are part of checksKey, so `fresh` changes whenever they do.
@@ -89,15 +92,22 @@ export function useHabitDays(
     loadError: checks.error,
     saveError,
     entry,
-    isDone: (habitId: string, date: ISODate) => entry(habitId, date) !== null,
+    isDone: (habitId: string, date: ISODate) => entry(habitId, date)?.done === true,
+    isMissed: (habitId: string, date: ISODate) => entry(habitId, date)?.done === false,
     /** Check off a check habit, or undo it. */
     toggle: (habit: Habit, date: ISODate) => {
-      const done = entry(habit.id, date) === null
-      save(habit.id, date, done ? { minutes: null } : null, () => setCheck(habit.id, date, done))
+      const done = entry(habit.id, date)?.done !== true
+      save(habit.id, date, done ? { minutes: null, done: true } : null, () => setMark(habit.id, date, done ? 'done' : null))
+    },
+    /** Mark a ✓ / ✗ habit done or missed, or clear the day with null. */
+    setDayMark: (habit: Habit, date: ISODate, mark: 'done' | 'missed' | null) => {
+      save(habit.id, date, mark === null ? null : { minutes: null, done: mark === 'done' }, () =>
+        setMark(habit.id, date, mark),
+      )
     },
     /** Record minutes for a minutes habit, or clear the day with null. */
     setDayMinutes: (habit: Habit, date: ISODate, minutes: number | null) => {
-      save(habit.id, date, minutes === null ? null : { minutes }, () => setMinutes(habit.id, date, minutes))
+      save(habit.id, date, minutes === null ? null : { minutes, done: true }, () => setMinutes(habit.id, date, minutes))
     },
   }
 }

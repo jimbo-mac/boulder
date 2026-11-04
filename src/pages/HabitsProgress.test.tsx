@@ -20,8 +20,8 @@ vi.mock('../components/ScreenTimeChart', () => ({
 const read = { id: 'r', name: 'Read', tracking: 'check' as const, weeklyGoal: 3 }
 const screenTime = { id: 'st', name: 'Screen time', tracking: 'minutes' as const, weeklyGoal: 3 }
 
-const check = (date: string): HabitCheck => ({ habitId: 'r', date, minutes: null })
-const minutes = (date: string, m: number): HabitCheck => ({ habitId: 'st', date, minutes: m })
+const check = (date: string): HabitCheck => ({ habitId: 'r', date, minutes: null, done: true })
+const minutes = (date: string, m: number): HabitCheck => ({ habitId: 'st', date, minutes: m, done: true })
 
 function card(name: string): HTMLElement {
   return screen.getByRole('heading', { name }).closest('section') as HTMLElement
@@ -95,5 +95,19 @@ describe('HabitsProgress', () => {
     vi.mocked(listHabits).mockResolvedValue([screenTime])
     render(<HabitsProgress />)
     expect(await screen.findByRole('link', { name: 'Add one in Settings' })).toHaveAttribute('href', '#/settings')
+  })
+
+  it('marks ✗ days in the grid, counts only ✓ days, and a ✗ today ends the streak', async () => {
+    const devil = { id: 'd', name: '😈', tracking: 'yesno' as const, weeklyGoal: 3 }
+    vi.mocked(listHabits).mockResolvedValue([devil])
+    const d = (date: string, done: boolean): HabitCheck => ({ habitId: 'd', date, minutes: null, done })
+    vi.mocked(allChecks).mockResolvedValue([d('2026-11-02', true), d('2026-11-03', true), d('2026-11-04', false)])
+    render(<HabitsProgress />)
+    await screen.findByRole('heading', { name: '😈' })
+    expect(figure('😈', 'Streak')).toBe('0 days')
+    expect(figure('😈', 'Best streak')).toBe('2 days')
+    expect(figure('😈', 'Done')).toBe('2 of 24')
+    expect(within(card('😈')).getAllByText('✗')).toHaveLength(1)
+    expect(within(card('😈')).getByText(/✗ = marked missed/)).toBeInTheDocument()
   })
 })

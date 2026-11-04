@@ -1,12 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { checksBetween, listHabits, setCheck } from '../lib/db/habits'
+import { checksBetween, listHabits, setMark } from '../lib/db/habits'
 import { StretchForm } from './StretchForm'
 
-vi.mock('../lib/db/habits', () => ({ listHabits: vi.fn(), checksBetween: vi.fn(), setCheck: vi.fn() }))
+vi.mock('../lib/db/habits', () => ({ listHabits: vi.fn(), checksBetween: vi.fn(), setMark: vi.fn() }))
 const mockList = vi.mocked(listHabits)
 const mockChecks = vi.mocked(checksBetween)
-const mockSet = vi.mocked(setCheck)
+const mockSet = vi.mocked(setMark)
 
 const posture = { id: 'p', name: 'Posture', tracking: 'check' as const, weeklyGoal: 3 }
 const general = { id: 'g', name: 'General', tracking: 'check' as const, weeklyGoal: 2 }
@@ -20,10 +20,10 @@ describe('StretchForm', () => {
     vi.setSystemTime(new Date(2026, 10, 4, 9, 0)) // Wed Nov 4 2026
     mockList.mockReset().mockResolvedValue([posture, general])
     const saved = [
-      { habitId: 'p', date: '2026-11-02', minutes: null },
-      { habitId: 'p', date: '2026-11-03', minutes: null },
-      { habitId: 'g', date: '2026-11-03', minutes: null },
-      { habitId: 'g', date: '2026-10-29', minutes: null },
+      { habitId: 'p', date: '2026-11-02', minutes: null, done: true },
+      { habitId: 'p', date: '2026-11-03', minutes: null, done: true },
+      { habitId: 'g', date: '2026-11-03', minutes: null, done: true },
+      { habitId: 'g', date: '2026-10-29', minutes: null, done: true },
     ]
     // Like the real query: only the habits asked for, within the dates.
     mockChecks
@@ -63,11 +63,11 @@ describe('StretchForm', () => {
     fireEvent.click(routine('Posture'))
     expect(routine('Posture')).toHaveAttribute('aria-pressed', 'true')
     expect(routine('Posture')).toHaveTextContent('3 of 3 this week · goal met')
-    await waitFor(() => expect(mockSet).toHaveBeenCalledWith('p', '2026-11-04', true))
+    await waitFor(() => expect(mockSet).toHaveBeenCalledWith('p', '2026-11-04', 'done'))
 
     fireEvent.click(routine('Posture'))
     expect(routine('Posture')).toHaveAttribute('aria-pressed', 'false')
-    await waitFor(() => expect(mockSet).toHaveBeenLastCalledWith('p', '2026-11-04', false))
+    await waitFor(() => expect(mockSet).toHaveBeenLastCalledWith('p', '2026-11-04', null))
   })
 
   it('checks off a forgotten past day', async () => {
@@ -76,7 +76,7 @@ describe('StretchForm', () => {
     fireEvent.click(day('Mon, Nov 2, 2026'))
     expect(screen.getByText('Mon, Nov 2, 2026')).toBeInTheDocument()
     fireEvent.click(routine('General'))
-    await waitFor(() => expect(mockSet).toHaveBeenCalledWith('g', '2026-11-02', true))
+    await waitFor(() => expect(mockSet).toHaveBeenCalledWith('g', '2026-11-02', 'done'))
     expect(day('Mon, Nov 2, 2026')).toHaveAccessibleName(/General done/)
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to today' }))

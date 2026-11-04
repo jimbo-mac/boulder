@@ -16,7 +16,7 @@ export function HabitsForm() {
   const habits = useAsync('habits:habit', async () => {
     const list = await listHabits('habit')
     // All history, so streaks can reach back past the visible month.
-    const history = await allChecks(list.filter((h) => h.tracking === 'check').map((h) => h.id))
+    const history = await allChecks(list.filter((h) => h.tracking !== 'minutes').map((h) => h.id))
     return { list, history }
   })
 
@@ -33,8 +33,9 @@ export function HabitsForm() {
 
 function HabitDays({ list, history }: { list: Habit[]; history: HabitCheck[] }) {
   const days = useHabitDays(list, history)
-  const { today, selected, month, isDone, entry } = days
-  const checkHabits = list.filter((h) => h.tracking === 'check')
+  const { today, selected, month, isDone, isMissed, entry } = days
+  // Tap-to-check and ✓ / ✗ habits; both have daily streaks.
+  const checkHabits = list.filter((h) => h.tracking !== 'minutes')
   const minuteHabits = list.filter((h) => h.tracking === 'minutes')
   const isToday = selected === today
   const monthDays = monthGrid(month)
@@ -64,7 +65,19 @@ function HabitDays({ list, history }: { list: Habit[]; history: HabitCheck[] }) 
         <div className="flex flex-col gap-2">
           {checkHabits.map((habit) => {
             const done = isDone(habit.id, selected)
-            const streak = dailyStreakWhere((d) => isDone(habit.id, d), today)
+            const streak = dailyStreakWhere((d) => isDone(habit.id, d), today, isMissed(habit.id, today))
+            const streakText = streak > 0 ? `${daysText(streak)} in a row` : 'No streak yet'
+            if (habit.tracking === 'yesno') {
+              return (
+                <YesNoRow
+                  key={habit.id}
+                  habit={habit}
+                  streakText={streakText}
+                  mark={done ? 'done' : isMissed(habit.id, selected) ? 'missed' : null}
+                  onMark={(mark) => days.setDayMark(habit, selected, mark)}
+                />
+              )
+            }
             return (
               <button
                 key={habit.id}
@@ -78,7 +91,7 @@ function HabitDays({ list, history }: { list: Habit[]; history: HabitCheck[] }) 
                 <span className="min-w-0">
                   <span className="block truncate text-lg font-semibold">{habit.name}</span>
                   <span className={`block text-sm tabular-nums ${done ? 'text-stone-700' : 'text-stone-400'}`}>
-                    {streak > 0 ? `${daysText(streak)} in a row` : 'No streak yet'}
+                    {streakText}
                   </span>
                 </span>
                 <span aria-hidden="true" className="text-2xl leading-none">
@@ -121,7 +134,9 @@ function HabitDays({ list, history }: { list: Habit[]; history: HabitCheck[] }) 
           const done = checkHabits.filter((h) => isDone(h.id, date)).length
           const total = checkHabits.length
           const status = [
-            ...checkHabits.map((h) => `${h.name} ${isDone(h.id, date) ? 'done' : 'not done'}`),
+            ...checkHabits.map(
+              (h) => `${h.name} ${isDone(h.id, date) ? 'done' : isMissed(h.id, date) ? 'missed' : 'not done'}`,
+            ),
             ...minuteHabits.map((h) => {
               const minutes = entry(h.id, date)?.minutes
               return `${h.name} ${minutes == null ? 'not logged' : formatMinutes(minutes)}`
@@ -155,6 +170,58 @@ function HabitDays({ list, history }: { list: Habit[]; history: HabitCheck[] }) 
       <a href={routeHref('settings')} className="self-center py-2 text-sm text-stone-400 underline underline-offset-4">
         Add or change habits
       </a>
+    </div>
+  )
+}
+
+const markButton = 'flex h-12 w-12 items-center justify-center rounded-lg border text-2xl leading-none'
+
+/** A ✓ / ✗ habit: mark the day done or missed; tapping the chosen mark clears it. */
+function YesNoRow({
+  habit,
+  streakText,
+  mark,
+  onMark,
+}: {
+  habit: Habit
+  streakText: string
+  mark: 'done' | 'missed' | null
+  onMark: (mark: 'done' | 'missed' | null) => void
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={habit.name}
+      className="flex h-16 items-center justify-between gap-3 rounded-xl border border-stone-700 bg-stone-900 pr-2 pl-4"
+    >
+      <span className="min-w-0">
+        <span className="block truncate text-lg font-semibold">{habit.name}</span>
+        <span className="block text-sm text-stone-400 tabular-nums">{streakText}</span>
+      </span>
+      <span className="flex shrink-0 gap-2">
+        <button
+          type="button"
+          aria-label={`${habit.name}: done`}
+          aria-pressed={mark === 'done'}
+          onClick={() => onMark(mark === 'done' ? null : 'done')}
+          className={`${markButton} ${
+            mark === 'done' ? 'border-stone-100 bg-stone-100 text-stone-950' : 'border-stone-700 text-stone-400 active:bg-stone-800'
+          }`}
+        >
+          ✓
+        </button>
+        <button
+          type="button"
+          aria-label={`${habit.name}: missed`}
+          aria-pressed={mark === 'missed'}
+          onClick={() => onMark(mark === 'missed' ? null : 'missed')}
+          className={`${markButton} ${
+            mark === 'missed' ? 'border-stone-400 bg-stone-700 text-stone-50' : 'border-stone-700 text-stone-400 active:bg-stone-800'
+          }`}
+        >
+          ✗
+        </button>
+      </span>
     </div>
   )
 }
