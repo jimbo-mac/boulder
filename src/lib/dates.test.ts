@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  addDays,
-  fromDayNumber,
-  formatLongDate,
-  formatShortDate,
-  isValidISODate,
-  toDayNumber,
-  todayLocal,
-  weekStart,
-} from './dates'
+import { addDays, addMonths, formatLongDate, formatMonth, formatShortDate, fromDayNumber, isValidISODate, monthGrid, monthStart, toDayNumber, todayLocal, weekStart } from './dates'
 
 describe('isValidISODate', () => {
   it('accepts real days', () => {
@@ -76,5 +67,41 @@ describe('date labels', () => {
   it('formats without timezone drift', () => {
     expect(formatShortDate('2026-11-03')).toBe('Nov 3')
     expect(formatLongDate('2026-11-03')).toBe('Tue, Nov 3, 2026')
+  })
+})
+
+describe('months', () => {
+  it('monthStart and addMonths handle year boundaries and short months', () => {
+    expect(monthStart('2026-11-04')).toBe('2026-11-01')
+    expect(addMonths('2026-11-30', 1)).toBe('2026-12-01')
+    expect(addMonths('2026-12-15', 1)).toBe('2027-01-01')
+    expect(addMonths('2026-01-31', -1)).toBe('2025-12-01')
+    expect(addMonths('2026-03-31', -1)).toBe('2026-02-01')
+  })
+  it('rejects invalid dates', () => {
+    expect(() => monthStart('2026-02-30')).toThrow(RangeError)
+  })
+  it('formats the month name', () => {
+    expect(formatMonth('2026-11-04')).toBe('November 2026')
+  })
+})
+
+describe('monthGrid', () => {
+  it('covers the month in whole Monday-first weeks', () => {
+    // Nov 2026: the 1st is a Sunday, the 30th a Monday.
+    const weeks = monthGrid('2026-11-17')
+    expect(weeks).toHaveLength(6)
+    expect(weeks[0]).toEqual([
+      '2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01',
+    ])
+    expect(weeks.at(-1)?.[0]).toBe('2026-11-30')
+    expect(weeks.at(-1)?.[6]).toBe('2026-12-06')
+    expect(weeks.every((w) => w.length === 7)).toBe(true)
+  })
+  it('has exactly 4 weeks when a 28-day February starts on Monday', () => {
+    const weeks = monthGrid('2027-02-10')
+    expect(weeks).toHaveLength(4)
+    expect(weeks[0]?.[0]).toBe('2027-02-01')
+    expect(weeks.at(-1)?.[6]).toBe('2027-02-28')
   })
 })

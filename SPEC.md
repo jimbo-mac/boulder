@@ -67,6 +67,19 @@ sets                            -- many per lift workout
   weight_lb     numeric(6,2)
   reps          integer
   is_warmup     boolean default false
+
+habits                          -- yes/no daily habits with a weekly goal
+  id            uuid, pk
+  user_id       uuid
+  kind          'stretch' | 'habit'   -- which tab shows it (Stretch now; a Habits tab later)
+  name          text            -- unique per user + kind; Stretch has Posture, General
+  weekly_goal   integer 1–7, default 3
+  sort_order    integer
+
+habit_checks                    -- a row = done that local day; unchecking deletes it
+  habit_id      uuid, fk -> habits (cascade delete)
+  date          date
+  primary key (habit_id, date)
 ```
 
 - Row-level security on every table: `user_id = auth.uid()` (child tables via their parent workout).
@@ -107,7 +120,7 @@ Edge cases to test: zero/negative inputs rejected, reps > 12 flagged as low-conf
 
 ## Screens
 
-Navigation: bottom tab bar on phones, top tabs on desktop; current screen lives in the URL hash (`#/log`, `#/progress`, …) so back/forward work. No routing library.
+Navigation (Log, Progress, Stretch, History, Settings): bottom tab bar on phones, top tabs on desktop; current screen lives in the URL hash (`#/log`, `#/progress`, …) so back/forward work. No routing library.
 
 
 1. **Log** (default on mobile)
@@ -121,7 +134,11 @@ Navigation: bottom tab bar on phones, top tabs on desktop; current screen lives 
    - Lifting tab: est. 1RM per exercise (line, exercise selector), weekly volume for the selected exercise (bar; reps-only exercises show total reps per week), recent PRs list
    - Time range selector: 4w / 12w / 6m / 1y / all
 3. **History** — reverse-chronological list of runs and lifts (lifts show exercises, working sets, volume). Tap a workout to edit it (`#/history/<id>`) in the same form it was logged with, or delete it (with a confirm). Edits are atomic (`update_lift` / `update_run`) and never touch the on-device lift draft. After saving a new workout, the "Saved" message links straight to its edit screen.
-4. **Settings** — goal race (optional name + date; distance via 5K / 10K / Half / Marathon presets or custom; goal time), sign out, export all data as JSON.
+4. **Stretch** — two routines, Posture and General (fixed for now), each a yes/no per day with a weekly goal (days per week, set in Settings). No streaks.
+   - Two big toggles act on the selected day (default today): one tap checks it off and saves immediately; tap again to undo. Each shows "N of goal this week" (Monday-start week).
+   - Month calendar (Monday first) with two small dots per day — Posture left (blue), General right (orange), hollow when not done — plus a legend and "This month: N days" per routine. Tap a past day to select it and check off something forgotten; future days are disabled.
+   - Not shown in History or Progress.
+5. **Settings** — goal race (optional name + date; distance via 5K / 10K / Half / Marathon presets or custom; goal time), weekly stretching goals (− / + per routine, 1–7 days, saves on tap), sign out, export all data as JSON.
    - Progress shows a goal card above the range selector: goal time + pace, predicted time + pace, gap, days to go, and which run the prediction used.
 
 ### PR detection
@@ -144,6 +161,7 @@ PRs get a marker on charts and appear in a recent-PRs list.
 5. **Lifts end-to-end** — exercise catalog, set logging, est. 1RM chart.
    - **5b. Edit/delete** (moved up from slice 7 after a workout was saved too early) — edit/delete from History, "Edit" link after saving.
 6. **Lift trends** — weekly volume, PR detection + markers (lifts and runs).
+   - **6b. Stretching** — Stretch tab, habits tables, weekly goals in Settings.
 7. **PWA + polish** — manifest, icons (the boulder), offline-friendly shell, JSON export.
 
 ## v2 ideas

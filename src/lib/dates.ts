@@ -76,3 +76,39 @@ export function formatLongDate(date: ISODate): string {
     timeZone: 'UTC',
   })
 }
+
+/** The first day of `date`'s month. */
+export function monthStart(date: ISODate): ISODate {
+  toUTCms(date) // validate
+  return `${date.slice(0, 7)}-01`
+}
+
+/** The first day of the month `months` away from `date`'s month. */
+export function addMonths(date: ISODate, months: number): ISODate {
+  const ms = toUTCms(monthStart(date))
+  const d = new Date(ms)
+  return fromUTCms(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1))
+}
+
+/**
+ * Calendar grid for `date`'s month: whole Monday-to-Sunday weeks, including the
+ * spill-over days from the months before and after.
+ */
+export function monthGrid(date: ISODate): ISODate[][] {
+  const first = monthStart(date)
+  const next = addMonths(first, 1)
+  const weeks: ISODate[][] = []
+  for (let week = weekStart(first); week < next; week = addDays(week, 7)) {
+    weeks.push(Array.from({ length: 7 }, (_, i) => addDays(week, i)))
+  }
+  return weeks
+}
+
+/** "November 2026". */
+export function formatMonth(date: ISODate): string {
+  return new Date(toUTCms(date)).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}

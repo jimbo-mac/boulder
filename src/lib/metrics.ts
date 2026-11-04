@@ -399,3 +399,33 @@ export function weeklyMileage(
     miles: Math.round(miles * 100) / 100,
   }))
 }
+
+// --- Habits (stretching) ------------------------------------------------------------
+
+export interface WeeklyGoalProgress {
+  /** Days done in the week. */
+  done: number
+  goal: number
+  met: boolean
+}
+
+/** Days a habit was done in the Monday-start week containing `weekOf`, against its weekly goal. */
+export function weeklyGoalProgress(
+  doneDates: readonly ISODate[],
+  weekOf: ISODate,
+  goal: number,
+): WeeklyGoalProgress {
+  if (!Number.isInteger(goal) || goal < 1 || goal > 7) {
+    throw new RangeError(`goal must be a whole number from 1 to 7, got ${goal}`)
+  }
+  const start = weekStart(weekOf)
+  const end = addDays(start, 6)
+  const done = new Set(doneDates.filter((d) => d >= start && d <= end)).size
+  return { done, goal, met: done >= goal }
+}
+
+/** Distinct days a habit was done in `date`'s month. */
+export function daysDoneInMonth(doneDates: readonly ISODate[], date: ISODate): number {
+  const month = date.slice(0, 7)
+  return new Set(doneDates.filter((d) => d.slice(0, 7) === month)).size
+}

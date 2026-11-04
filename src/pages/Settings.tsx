@@ -1,3 +1,4 @@
+import { StretchGoals } from '../components/StretchGoals'
 import { useState, type FormEvent } from 'react'
 import {
   cardClass,
@@ -41,6 +42,12 @@ export function Settings({ email }: { email: string }) {
         )}
         {settings.data === undefined && !settings.error && <p className="text-stone-400">Loading…</p>}
         {settings.data && <GoalForm initial={settings.data} />}
+      </section>
+
+      <section className={cardClass}>
+        <h2 className="mb-1 font-semibold">Weekly stretching goals</h2>
+        <p className="mb-4 text-sm text-stone-400">Days per week for each routine.</p>
+        <StretchGoals />
       </section>
 
       <section className={cardClass}>

@@ -1,9 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { listHabits, setWeeklyGoal } from '../lib/db/habits'
 import { getSettings, saveSettings } from '../lib/db/settings'
 import { Settings } from './Settings'
 
 vi.mock('../lib/db/auth', () => ({ signOut: vi.fn() }))
+vi.mock('../lib/db/habits', () => ({ listHabits: vi.fn(), setWeeklyGoal: vi.fn() }))
+const mockListHabits = vi.mocked(listHabits)
+const mockSetWeeklyGoal = vi.mocked(setWeeklyGoal)
 vi.mock('../lib/db/settings', () => ({
   EMPTY_SETTINGS: { goalRaceName: null, goalRaceDate: null, goalDistanceMi: null, goalTimeS: null },
   getSettings: vi.fn(),
@@ -17,6 +21,7 @@ const saveButton = () => screen.getByRole('button', { name: 'Save goal' })
 
 describe('Settings goal race', () => {
   beforeEach(() => {
+    mockListHabits.mockReset().mockResolvedValue([])
     mockGetSettings.mockReset().mockResolvedValue(empty)
     mockSaveSettings.mockReset().mockResolvedValue()
   })
@@ -89,5 +94,34 @@ describe('Settings goal race', () => {
   it('shows the signed-in email', async () => {
     render(<Settings email="me@example.com" />)
     expect(await screen.findByText('me@example.com')).toBeInTheDocument()
+  })
+})
+
+describe('Settings stretching goals', () => {
+  beforeEach(() => {
+    mockGetSettings.mockReset().mockResolvedValue(empty)
+    mockListHabits.mockReset().mockResolvedValue([
+      { id: 'p', name: 'Posture', weeklyGoal: 3 },
+      { id: 'g', name: 'General', weeklyGoal: 7 },
+    ])
+    mockSetWeeklyGoal.mockReset().mockResolvedValue()
+  })
+
+  it('raises and lowers a goal, saving each change, within 1–7', async () => {
+    render(<Settings email="me@example.com" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Raise Posture goal' }))
+    expect(screen.getByText('4 / week')).toBeInTheDocument()
+    expect(mockSetWeeklyGoal).toHaveBeenLastCalledWith('p', 4)
+    fireEvent.click(screen.getByRole('button', { name: 'Lower Posture goal' }))
+    expect(mockSetWeeklyGoal).toHaveBeenLastCalledWith('p', 3)
+    expect(screen.getByRole('button', { name: 'Raise General goal' })).toBeDisabled()
+  })
+
+  it('reverts and explains when saving fails', async () => {
+    mockSetWeeklyGoal.mockRejectedValue(new Error('offline'))
+    render(<Settings email="me@example.com" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Raise Posture goal' }))
+    expect(await screen.findByText("Couldn't save goal: offline")).toBeInTheDocument()
+    expect(screen.getByText('3 / week')).toBeInTheDocument()
   })
 })

@@ -63,6 +63,59 @@ export type Database = {
         }
         Relationships: []
       }
+      habit_checks: {
+        Row: {
+          date: string
+          habit_id: string
+        }
+        Insert: {
+          date: string
+          habit_id: string
+        }
+        Update: {
+          date?: string
+          habit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_checks_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habits: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          sort_order: number
+          user_id: string
+          weekly_goal: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          name: string
+          sort_order?: number
+          user_id?: string
+          weekly_goal?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          sort_order?: number
+          user_id?: string
+          weekly_goal?: number
+        }
+        Relationships: []
+      }
       runs: {
         Row: {
           distance_mi: number

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { goalPace, pace, paceTrend, predictRaceTime, riegel, runPRs, weeklyMileage, type RunPRInput } from './metrics'
+import { daysDoneInMonth, goalPace, pace, paceTrend, predictRaceTime, riegel, runPRs, weeklyGoalProgress, weeklyMileage, type RunPRInput } from './metrics'
 
 describe('riegel', () => {
   it('returns the same time for the same distance', () => {
@@ -260,5 +260,33 @@ describe('runPRs', () => {
 
   it('rejects invalid runs', () => {
     expect(() => runPRs([run('2026-10-01', 'base', 0, 100)])).toThrow(RangeError)
+  })
+})
+
+describe('weeklyGoalProgress', () => {
+  // Week of Mon Nov 2 – Sun Nov 8, 2026.
+  it('counts distinct days in the Monday-start week', () => {
+    expect(
+      weeklyGoalProgress(['2026-11-01', '2026-11-02', '2026-11-04', '2026-11-04', '2026-11-08', '2026-11-09'], '2026-11-05', 3),
+    ).toEqual({ done: 3, goal: 3, met: true })
+  })
+  it('is not met below the goal, and is 0 for an empty week', () => {
+    expect(weeklyGoalProgress(['2026-11-03'], '2026-11-02', 2)).toEqual({ done: 1, goal: 2, met: false })
+    expect(weeklyGoalProgress([], '2026-11-02', 1)).toEqual({ done: 0, goal: 1, met: false })
+  })
+  it('counts past the goal', () => {
+    expect(weeklyGoalProgress(['2026-11-02', '2026-11-03'], '2026-11-08', 1)).toEqual({ done: 2, goal: 1, met: true })
+  })
+  it('rejects goals outside 1–7', () => {
+    expect(() => weeklyGoalProgress([], '2026-11-02', 0)).toThrow(RangeError)
+    expect(() => weeklyGoalProgress([], '2026-11-02', 8)).toThrow(RangeError)
+    expect(() => weeklyGoalProgress([], '2026-11-02', 2.5)).toThrow(RangeError)
+  })
+})
+
+describe('daysDoneInMonth', () => {
+  it('counts distinct days in the same month only', () => {
+    expect(daysDoneInMonth(['2026-10-31', '2026-11-01', '2026-11-01', '2026-11-30', '2026-12-01'], '2026-11-15')).toBe(2)
+    expect(daysDoneInMonth([], '2026-11-15')).toBe(0)
   })
 })
