@@ -98,3 +98,43 @@ export function formatWeight(lb: number): string {
 export function formatMiles(miles: number): string {
   return miles.toFixed(2)
 }
+
+// --- Hours:minutes (screen time) ------------------------------------------------
+
+/** Keep up to 4 digits, without leading zeros (but "0" stays, for 0:00). */
+export function cleanHmDigits(input: string): string {
+  return input.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 4)
+}
+
+/** Typed digits as H:MM: "215" → "2:15", "45" → "0:45", "5" → "0:05". */
+export function formatHmDigits(digits: string): string {
+  if (digits === '') return ''
+  const padded = digits.padStart(3, '0')
+  return `${Number(padded.slice(0, -2))}:${padded.slice(-2)}`
+}
+
+/** Typed digits to minutes. Minutes must be < 60 and the total under 24 hours; "" is null. */
+export function hmDigitsToMinutes(digits: string): number | null {
+  if (!/^\d{1,4}$/.test(digits)) return null
+  const padded = digits.padStart(4, '0')
+  const h = Number(padded.slice(0, 2))
+  const m = Number(padded.slice(2))
+  if (m >= 60) return null
+  const total = h * 60 + m
+  return total < 24 * 60 ? total : null
+}
+
+/** Inverse of hmDigitsToMinutes, for pre-filling: 135 → "215", 0 → "0". */
+export function minutesToHmDigits(minutes: number): string {
+  const rounded = Math.max(0, Math.round(minutes))
+  return cleanHmDigits(`${Math.floor(rounded / 60)}${String(rounded % 60).padStart(2, '0')}`)
+}
+
+/** 135 → "2h 15m", 120 → "2h", 45 → "45m", 0 → "0m". Rounds to the minute. */
+export function formatMinutes(minutes: number): string {
+  const rounded = Math.round(Math.abs(minutes))
+  const h = Math.floor(rounded / 60)
+  const m = rounded % 60
+  if (h === 0) return `${m}m`
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}

@@ -107,12 +107,12 @@ describe('Log run form', () => {
 })
 
 describe('Log Stretch option', () => {
-  it('sits next to Run and Lift and opens the stretching check-offs', async () => {
-    vi.mocked(listHabits).mockResolvedValue([{ id: 'p', name: 'Posture', weeklyGoal: 3 }])
+  it('sits next to Run, Lift, and Habits and opens the stretching check-offs', async () => {
+    vi.mocked(listHabits).mockResolvedValue([{ id: 'p', name: 'Posture', tracking: 'check' as const, weeklyGoal: 3 }])
     vi.mocked(checksBetween).mockResolvedValue([])
     render(<Log />)
     const group = screen.getByRole('group', { name: 'Workout type' })
-    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Run', 'Lift', 'Stretch'])
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Run', 'Lift', 'Stretch', 'Habits'])
     fireEvent.click(screen.getByRole('button', { name: 'Stretch' }))
     expect(screen.getByRole('button', { name: 'Stretch' })).toHaveAttribute('aria-pressed', 'true')
     expect(await screen.findByRole('button', { name: /^Posture/ })).toBeInTheDocument()

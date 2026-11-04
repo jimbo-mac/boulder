@@ -71,14 +71,17 @@ sets                            -- many per lift workout
 habits                          -- yes/no daily habits with a weekly goal
   id            uuid, pk
   user_id       uuid
-  kind          'stretch' | 'habit'   -- which tab shows it (Stretch now; a Habits tab later)
-  name          text            -- unique per user + kind; Stretch has Posture, General
+  kind          'stretch' | 'habit'   -- Log > Stretch or Log > Habits
+  name          text            -- unique per user + kind among habits in use; Stretch has Posture, General
+  tracking      'check' | 'minutes', default 'check'  -- minutes = an amount per day (Screen time, built in)
+  archived_at   timestamptz, nullable  -- hidden from Log/Progress; history kept
   weekly_goal   integer 1–7, default 3
   sort_order    integer
 
-habit_checks                    -- a row = done that local day; unchecking deletes it
+habit_checks                    -- a row = done (or logged) that local day; unchecking/clearing deletes it
   habit_id      uuid, fk -> habits (cascade delete)
   date          date
+  minutes       integer 0–1439, nullable  -- minutes habits only
   primary key (habit_id, date)
 ```
 
@@ -124,7 +127,7 @@ Navigation (Log, Progress, History, Settings): bottom tab bar on phones, top tab
 
 
 1. **Log** (default on mobile)
-   - Toggle: Run / Lift / Stretch
+   - Toggle: Run / Lift / Stretch / Habits
    - Run: date (default today), distance, duration, type (Base / Long / Recovery / Speed). Live average pace shown as you type. Kept deliberately minimal — no HR, RPE, or notes.
    - Duration is one numeric-keypad field that formats as you type (`4530` → `45:30`, `10500` → `1:05:00`); iOS numeric keypads have no colon.
    - Lift: date, then add exercises → add sets (weight × reps, warm-up toggle). "Repeat last set" (copies weight/reps/warm-up) and "+ Empty set" buttons. Exercise picker with type-ahead, common-lift suggestions until added, and create new (pick a category). Bodyweight = 0 lb.
@@ -133,15 +136,19 @@ Navigation (Log, Progress, History, Settings): bottom tab bar on phones, top tab
      - Two big toggles act on the selected day (default today): one tap checks it off and saves immediately; tap again to undo. Each shows "N of goal this week" (Monday-start week).
      - Month calendar (Monday first) with two small dots per day — Posture left (blue), General right (orange), hollow when not done — plus a legend and "This month: N days" per routine. Tap a past day to select it and check off something forgotten; future days are disabled.
      - Not shown in History; Progress has a read-only Stretching view.
+   - Habits: check-off habits the user adds in Settings, plus built-in Screen time. Same selected-day + month calendar as Stretch (each day shows ✓ when all check-offs are done, else "done/total").
+     - Check-offs: one full-width toggle per habit for the selected day, showing its daily streak ("N days in a row"). Streak = consecutive days ending today; an unchecked today doesn't break it (runs through yesterday). Uses all history.
+     - Screen time: one hours:minutes field (`215` → `2:15`, minutes < 60, under 24h) with Save, and Clear for a logged day. Trend only, no limit.
 2. **Progress** (default on desktop)
    - Running tab: weekly mileage (bar) with this-week / weekly-avg / total tiles; pace over time per run type (dots per run + 5-run average line, normal y-axis (lower = faster), "current" and "change in range" figures), long-run distance (line), goal-pace reference line + predicted race time card, PR markers on the pace and long-run charts, recent run PRs list
    - Lifting tab: est. 1RM per exercise (line, exercise selector), weekly volume for the selected exercise (bar; reps-only exercises show total reps per week), recent PRs list
    - Stretching tab: read-only, one card per routine. Figures: this week (N of goal), week streak, goal met (N of M weeks in range). Week grid: a column per Monday-start week, a row per weekday, a filled square per day done (hollow = not done, blank = future), and under each week ✓ met / – missed / · in progress.
      - Week streak = weeks in a row the goal was met, counting back from this week; this week counts only once met (otherwise the streak runs through last week). Uses all history, not the range.
      - "Goal met" counts finished weeks in the range, plus this week once met. Past weeks are judged against the current goal (goal changes aren't stored).
+   - Habits tab (4 options sit 2×2 on phones): Screen time card — average per logged day in range, change vs the same number of days just before, days logged, and a daily bar chart with a trailing 7-day average line (lower = better). One card per check-off habit — current streak, best streak, days done in range, and the week grid with days done under each week.
    - Time range selector: 1w / 1m / 3m, default 1m (whole Mon–Sun weeks: 1, 4, 13). Kept short while there is little data; 6m / 1y / All can come back later. PRs are always judged against all history.
 3. **History** — reverse-chronological list of runs and lifts (lifts show exercises, working sets, volume). Tap a workout to edit it (`#/history/<id>`) in the same form it was logged with, or delete it (with a confirm). Edits are atomic (`update_lift` / `update_run`) and never touch the on-device lift draft. After saving a new workout, the "Saved" message links straight to its edit screen.
-4. **Settings** — goal race (optional name + date; distance via 5K / 10K / Half / Marathon presets or custom; goal time), weekly stretching goals (− / + per routine, 1–7 days, saves on tap), sign out, export all data as JSON.
+4. **Settings** — goal race (optional name + date; distance via 5K / 10K / Half / Marathon presets or custom; goal time), habits (add, rename, remove = archive with a confirm; Screen time is built in and not listed), weekly stretching goals (− / + per routine, 1–7 days, saves on tap), sign out, export all data as JSON.
    - Progress shows a goal card above the range selector: goal time + pace, predicted time + pace, gap, days to go, and which run the prediction used.
 
 ### PR detection
@@ -165,6 +172,7 @@ PRs get a marker on charts and appear in a recent-PRs list.
    - **5b. Edit/delete** (moved up from slice 7 after a workout was saved too early) — edit/delete from History, "Edit" link after saving.
 6. **Lift trends** — weekly volume, PR detection + markers (lifts and runs).
    - **6b. Stretching** — Stretch option on Log, habits tables, weekly goals in Settings.
+   - **6c. Habits** — Habits option on Log and Progress, daily streaks, screen time, habit management in Settings.
 7. **PWA + polish** — manifest, icons (the boulder), offline-friendly shell, JSON export.
 
 ## v2 ideas

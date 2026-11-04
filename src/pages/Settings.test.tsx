@@ -1,11 +1,17 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { listHabits, setWeeklyGoal } from '../lib/db/habits'
+import { archiveHabit, createHabit, listHabits, renameHabit, setWeeklyGoal } from '../lib/db/habits'
 import { getSettings, saveSettings } from '../lib/db/settings'
 import { Settings } from './Settings'
 
 vi.mock('../lib/db/auth', () => ({ signOut: vi.fn() }))
-vi.mock('../lib/db/habits', () => ({ listHabits: vi.fn(), setWeeklyGoal: vi.fn() }))
+vi.mock('../lib/db/habits', () => ({
+  listHabits: vi.fn(),
+  setWeeklyGoal: vi.fn(),
+  createHabit: vi.fn(),
+  renameHabit: vi.fn(),
+  archiveHabit: vi.fn(),
+}))
 const mockListHabits = vi.mocked(listHabits)
 const mockSetWeeklyGoal = vi.mocked(setWeeklyGoal)
 vi.mock('../lib/db/settings', () => ({
@@ -100,10 +106,16 @@ describe('Settings goal race', () => {
 describe('Settings stretching goals', () => {
   beforeEach(() => {
     mockGetSettings.mockReset().mockResolvedValue(empty)
-    mockListHabits.mockReset().mockResolvedValue([
-      { id: 'p', name: 'Posture', weeklyGoal: 3 },
-      { id: 'g', name: 'General', weeklyGoal: 7 },
-    ])
+    mockListHabits.mockReset().mockImplementation((kind) =>
+      Promise.resolve(
+        kind === 'stretch'
+          ? [
+              { id: 'p', name: 'Posture', tracking: 'check' as const, weeklyGoal: 3 },
+              { id: 'g', name: 'General', tracking: 'check' as const, weeklyGoal: 7 },
+            ]
+          : [],
+      ),
+    )
     mockSetWeeklyGoal.mockReset().mockResolvedValue()
   })
 
@@ -123,5 +135,64 @@ describe('Settings stretching goals', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Raise Posture goal' }))
     expect(await screen.findByText("Couldn't save goal: offline")).toBeInTheDocument()
     expect(screen.getByText('3 / week')).toBeInTheDocument()
+  })
+})
+
+describe('Settings habits', () => {
+  const read = { id: 'h1', name: 'Read', tracking: 'check' as const, weeklyGoal: 3 }
+  const screenTime = { id: 'st', name: 'Screen time', tracking: 'minutes' as const, weeklyGoal: 3 }
+
+  beforeEach(() => {
+    mockGetSettings.mockReset().mockResolvedValue(empty)
+    mockListHabits.mockReset().mockImplementation((kind) => Promise.resolve(kind === 'habit' ? [read, screenTime] : []))
+    vi.mocked(createHabit).mockReset()
+    vi.mocked(renameHabit).mockReset().mockResolvedValue()
+    vi.mocked(archiveHabit).mockReset().mockResolvedValue()
+  })
+
+  it('lists check-off habits but not built-in screen time', async () => {
+    render(<Settings email="me@example.com" />)
+    expect(await screen.findByText('Read')).toBeInTheDocument()
+    expect(screen.queryByText('Screen time')).not.toBeInTheDocument()
+  })
+
+  it('adds a habit', async () => {
+    vi.mocked(createHabit).mockResolvedValue({ id: 'h2', name: 'Meditate', tracking: 'check', weeklyGoal: 3 })
+    render(<Settings email="me@example.com" />)
+    fireEvent.change(await screen.findByLabelText('New habit'), { target: { value: ' Meditate ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    expect(await screen.findByText('Meditate')).toBeInTheDocument()
+    expect(createHabit).toHaveBeenCalledWith('Meditate')
+    expect(screen.getByLabelText('New habit')).toHaveValue('')
+  })
+
+  it('explains a duplicate name and keeps what was typed', async () => {
+    vi.mocked(createHabit).mockRejectedValue(new Error('You already have a habit called "Read".'))
+    render(<Settings email="me@example.com" />)
+    fireEvent.change(await screen.findByLabelText('New habit'), { target: { value: 'Read' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('You already have a habit called "Read".')
+    expect(screen.getByLabelText('New habit')).toHaveValue('Read')
+  })
+
+  it('renames a habit', async () => {
+    render(<Settings email="me@example.com" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Rename Read' }))
+    fireEvent.change(screen.getByLabelText('New name for Read'), { target: { value: 'Read 20 min' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByText('Read 20 min')).toBeInTheDocument()
+    expect(renameHabit).toHaveBeenCalledWith('h1', 'Read 20 min')
+  })
+
+  it('removes a habit only after confirming', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<Settings email="me@example.com" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove Read' }))
+    expect(archiveHabit).not.toHaveBeenCalled()
+    confirm.mockReturnValue(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Read' }))
+    await waitFor(() => expect(screen.queryByText('Read')).not.toBeInTheDocument())
+    expect(archiveHabit).toHaveBeenCalledWith('h1')
+    confirm.mockRestore()
   })
 })

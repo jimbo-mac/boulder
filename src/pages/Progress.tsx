@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { chipClass } from '../components/ui'
+import { HabitsProgress } from './HabitsProgress'
 import { LiftingProgress } from './LiftingProgress'
 import { RunningProgress } from './RunningProgress'
 import { StretchingProgress } from './StretchingProgress'
@@ -8,6 +9,7 @@ const TABS = [
   { value: 'running', label: 'Running' },
   { value: 'lifting', label: 'Lifting' },
   { value: 'stretching', label: 'Stretching' },
+  { value: 'habits', label: 'Habits' },
 ] as const
 type Tab = (typeof TABS)[number]['value']
 
@@ -16,7 +18,7 @@ export function Progress() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-3 gap-2 md:max-w-md" role="group" aria-label="Progress type">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:max-w-xl" role="group" aria-label="Progress type">
         {TABS.map((option) => (
           <button
             key={option.value}
@@ -32,6 +34,7 @@ export function Progress() {
       {tab === 'running' && <RunningProgress />}
       {tab === 'lifting' && <LiftingProgress />}
       {tab === 'stretching' && <StretchingProgress />}
+      {tab === 'habits' && <HabitsProgress />}
     </div>
   )
 }

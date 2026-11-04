@@ -1,5 +1,4 @@
 import { addDays, formatShortDate, formatShortMonth, type ISODate } from '../lib/dates'
-import type { GoalWeek } from '../lib/metrics'
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
 const HOLLOW = '#44403c' // stone-700 outline: not done
@@ -16,7 +15,18 @@ interface MonthSpan {
  * gets its own columns' width, so labels can't overlap. A one-week run at the
  * start is left blank (its name wouldn't fit); the last run may spill right.
  */
-function monthSpans(weeks: readonly GoalWeek[]): MonthSpan[] {
+export interface GridWeek {
+  /** Monday that starts the week. */
+  weekStart: ISODate
+  /** Days done that week. */
+  done: number
+  /** Shown under the week's column, e.g. "✓" or "5". */
+  mark: string
+  /** Read out in the table view when the grid has a `resultLabel`, e.g. "met". */
+  result?: string
+}
+
+function monthSpans(weeks: readonly GridWeek[]): MonthSpan[] {
   const spans: MonthSpan[] = []
   weeks.forEach((week, i) => {
     const label = formatShortMonth(week.weekStart)
@@ -28,21 +38,24 @@ function monthSpans(weeks: readonly GoalWeek[]): MonthSpan[] {
 }
 
 /**
- * Read-only week grid for one routine: a column per week, a row per weekday,
- * a filled square for each day done, and a goal mark under each week.
+ * Read-only week grid for one habit: a column per week, a row per weekday,
+ * a filled square for each day done, and a mark under each week.
  */
-export function StretchWeekGrid({
+export function WeekGrid({
   name,
   color,
   weeks,
   isDone,
   today,
+  resultLabel,
 }: {
   name: string
   color: string
-  weeks: GoalWeek[]
+  weeks: GridWeek[]
   isDone: (date: ISODate) => boolean
   today: ISODate
+  /** Heading for a third table column holding each week's `result`. */
+  resultLabel?: string
 }) {
   const spans = monthSpans(weeks)
   const columns = `1rem repeat(${weeks.length}, minmax(0, 1.75rem))`
@@ -100,7 +113,7 @@ export function StretchWeekGrid({
         <span />
         {weeks.map((week) => (
           <span key={week.weekStart} className="text-center text-sm leading-6 text-stone-300">
-            {week.met ? '✓' : week.complete ? '–' : '·'}
+            {week.mark}
           </span>
         ))}
       </div>
@@ -111,7 +124,7 @@ export function StretchWeekGrid({
           <tr>
             <th scope="col">Week of</th>
             <th scope="col">Days done</th>
-            <th scope="col">Goal</th>
+            {resultLabel && <th scope="col">{resultLabel}</th>}
           </tr>
         </thead>
         <tbody>
@@ -119,7 +132,7 @@ export function StretchWeekGrid({
             <tr key={week.weekStart}>
               <td>{formatShortDate(week.weekStart)}</td>
               <td>{week.done}</td>
-              <td>{week.met ? 'met' : week.complete ? 'missed' : 'in progress'}</td>
+              {resultLabel && <td>{week.result}</td>}
             </tr>
           ))}
         </tbody>

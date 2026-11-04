@@ -473,3 +473,96 @@ export function goalStreak(doneDates: readonly ISODate[], today: ISODate, goal: 
   }
   return streak
 }
+
+// --- Daily habits ------------------------------------------------------------------
+
+/**
+ * Days in a row a habit was done, counting back from today. An unchecked today
+ * doesn't break it (the day isn't over): the streak then runs through yesterday.
+ * Days after `today` are ignored.
+ */
+export function dailyStreak(doneDates: readonly ISODate[], today: ISODate): number {
+  const done = new Set(doneDates)
+  return dailyStreakWhere((day) => done.has(day), today)
+}
+
+/** dailyStreak for any "was it done on this day?" lookup. */
+export function dailyStreakWhere(isDone: (day: ISODate) => boolean, today: ISODate): number {
+  let day = isDone(today) ? today : addDays(today, -1)
+  let streak = 0
+  while (isDone(day)) {
+    streak += 1
+    day = addDays(day, -1)
+  }
+  return streak
+}
+
+/** Longest run of consecutive days done, on or before `today`. */
+export function bestStreak(doneDates: readonly ISODate[], today: ISODate): number {
+  const days = [...new Set(doneDates.filter((d) => d <= today))].sort()
+  let best = 0
+  let run = 0
+  let previous: ISODate | null = null
+  for (const day of days) {
+    run = previous !== null && addDays(previous, 1) === day ? run + 1 : 1
+    best = Math.max(best, run)
+    previous = day
+  }
+  return best
+}
+
+export interface DailyMinutes {
+  date: ISODate
+  /** Minutes logged that day, or null if nothing was logged (not the same as 0). */
+  minutes: number | null
+  /** Average of the logged days in the 7 days ending here; null if none were logged. */
+  avg7: number | null
+}
+
+/** Days in the trailing screen time average. */
+export const MINUTES_AVERAGE_DAYS = 7
+
+/**
+ * One point per day from `from` through `to`, with a trailing 7-day average over
+ * logged days. Pass entries from at least 6 days before `from` so the first
+ * averages are complete.
+ */
+export function dailyMinutes(
+  entries: readonly { date: ISODate; minutes: number }[],
+  from: ISODate,
+  to: ISODate,
+): DailyMinutes[] {
+  if (from > to) throw new RangeError(`from (${from}) is after to (${to})`)
+  const byDay = new Map<ISODate, number>()
+  for (const entry of entries) {
+    if (!Number.isInteger(entry.minutes) || entry.minutes < 0) {
+      throw new RangeError(`minutes must be a whole number >= 0, got ${entry.minutes}`)
+    }
+    byDay.set(entry.date, entry.minutes)
+  }
+  const points: DailyMinutes[] = []
+  for (let day = from; day <= to; day = addDays(day, 1)) {
+    const window: number[] = []
+    for (let i = 0; i < MINUTES_AVERAGE_DAYS; i++) {
+      const value = byDay.get(addDays(day, -i))
+      if (value !== undefined) window.push(value)
+    }
+    points.push({
+      date: day,
+      minutes: byDay.get(day) ?? null,
+      avg7: window.length > 0 ? window.reduce((a, b) => a + b, 0) / window.length : null,
+    })
+  }
+  return points
+}
+
+/** Average minutes over the logged days with `from <= date <= to`; null if none. */
+export function averageMinutes(
+  entries: readonly { date: ISODate; minutes: number }[],
+  from: ISODate,
+  to: ISODate,
+): number | null {
+  const inRange = entries.filter((e) => e.date >= from && e.date <= to)
+  if (inRange.length === 0) return null
+  return inRange.reduce((sum, e) => sum + e.minutes, 0) / inRange.length
+}

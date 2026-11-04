@@ -1,42 +1,12 @@
-import { useRef, useState } from 'react'
+import { Dot } from '../components/Dot'
 import { habitColor as colorOf } from '../components/habitColors'
-import { cardClass, errorMessage } from '../components/ui'
-import {
-  addDays,
-  addMonths,
-  formatLongDate,
-  formatMonth,
-  monthGrid,
-  monthStart,
-  todayLocal,
-  weekStart,
-  type ISODate,
-} from '../lib/dates'
-import { checksBetween, listHabits, setCheck, type Habit } from '../lib/db/habits'
+import { MonthCalendar } from '../components/MonthCalendar'
+import { addDays, formatLongDate, monthGrid, weekStart } from '../lib/dates'
+import { listHabits, type Habit } from '../lib/db/habits'
 import { daysDoneInMonth, weeklyGoalProgress } from '../lib/metrics'
 import { routeHref } from '../lib/router'
 import { useAsync } from '../lib/useAsync'
-
-// Dot position (left/right) also identifies the routine, so color is never alone.
-const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
-
-const key = (habitId: string, date: ISODate) => `${habitId}|${date}`
-
-function Dot({ color, size = 8, hollow = false }: { color: string; size?: number; hollow?: boolean }) {
-  const r = size / 2 - 1
-  return (
-    <svg width={size} height={size} aria-hidden="true" className="shrink-0">
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill={hollow ? 'none' : color}
-        stroke={hollow ? '#44403c' : 'none'}
-        strokeWidth={hollow ? 1 : 0}
-      />
-    </svg>
-  )
-}
+import { useHabitDays } from '../lib/useHabitDays'
 
 /** Log > Stretch: check off each routine per day, see the month, track the weekly goal. */
 export function StretchForm() {
@@ -55,49 +25,15 @@ export function StretchForm() {
 }
 
 function StretchDays({ list }: { list: Habit[] }) {
-  const today = todayLocal()
-  const [selected, setSelected] = useState<ISODate>(today)
-  const [month, setMonth] = useState<ISODate>(monthStart(today))
+  const days = useHabitDays(list)
+  const { today, selected, month, isDone } = days
 
-  const weeks = monthGrid(month)
   const selectedWeek = weekStart(selected)
-  // The visible grid plus the selected day's week (it may be in another month).
-  const gridFrom = weeks[0]?.[0] ?? month
-  const gridTo = weeks.at(-1)?.[6] ?? month
-  const from = selectedWeek < gridFrom ? selectedWeek : gridFrom
-  const to = addDays(selectedWeek, 6) > gridTo ? addDays(selectedWeek, 6) : gridTo
-
-  const ids = list.map((h) => h.id)
-  const checks = useAsync(`checks:${ids.join(',')}:${from}..${to}`, () => checksBetween(ids, from, to))
-
-  // Toggles show at once; the saved truth overrides whatever was loaded.
-  const [overrides, setOverrides] = useState<ReadonlyMap<string, boolean>>(new Map())
-  const [saveError, setSaveError] = useState<string | null>(null)
-  // One save at a time per habit-day, so a quick check-uncheck lands in order.
-  const queue = useRef(new Map<string, Promise<void>>())
-
-  const loaded = new Set((checks.data ?? []).map((c) => key(c.habitId, c.date)))
-  const isDone = (habitId: string, date: ISODate) => overrides.get(key(habitId, date)) ?? loaded.has(key(habitId, date))
-  const doneDates = (habitId: string, dates: readonly ISODate[]) => dates.filter((d) => isDone(habitId, d))
-
-  function toggle(habit: Habit, date: ISODate) {
-    if (date > today) return
-    const k = key(habit.id, date)
-    const done = !isDone(habit.id, date)
-    setSaveError(null)
-    setOverrides((prev) => new Map(prev).set(k, done))
-    const previous = queue.current.get(k) ?? Promise.resolve()
-    const next = previous.then(() =>
-      setCheck(habit.id, date, done).catch((err: unknown) => {
-        setOverrides((prev) => new Map(prev).set(k, !done))
-        setSaveError(errorMessage(err))
-      }),
-    )
-    queue.current.set(k, next)
-  }
-
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(selectedWeek, i))
-  const monthDays = weeks.flat().filter((d) => d.slice(0, 7) === month.slice(0, 7))
+  const monthDays = monthGrid(month)
+    .flat()
+    .filter((d) => d.slice(0, 7) === month.slice(0, 7))
+  const doneDates = (habitId: string, dates: readonly string[]) => dates.filter((d) => isDone(habitId, d))
   const isToday = selected === today
 
   return (
@@ -107,10 +43,7 @@ function StretchDays({ list }: { list: Habit[] }) {
         {!isToday && (
           <button
             type="button"
-            onClick={() => {
-              setSelected(today)
-              setMonth(monthStart(today))
-            }}
+            onClick={days.goToToday}
             className="py-2 text-sm text-stone-400 underline underline-offset-4"
           >
             Back to today
@@ -127,13 +60,14 @@ function StretchDays({ list }: { list: Habit[] }) {
               key={habit.id}
               type="button"
               aria-pressed={done}
-              onClick={() => toggle(habit, selected)}
+              onClick={() => days.toggle(habit, selected)}
               className={`flex h-28 flex-col justify-between rounded-xl border p-3 text-left transition-colors ${
                 done ? 'border-stone-100 bg-stone-100 text-stone-950' : 'border-stone-700 bg-stone-900 active:bg-stone-800'
               }`}
             >
               <span className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2 text-lg font-semibold">
+                  {/* Dot position (left/right) also identifies the routine in the calendar. */}
                   <Dot color={colorOf(i)} size={10} />
                   {habit.name}
                 </span>
@@ -149,91 +83,55 @@ function StretchDays({ list }: { list: Habit[] }) {
         })}
       </div>
 
-      {saveError && (
+      {days.saveError && (
         <p role="alert" className="rounded-lg bg-red-950 px-4 py-3 text-sm text-red-200">
-          Couldn&apos;t save: {saveError}
+          Couldn&apos;t save: {days.saveError}
         </p>
       )}
 
-      <section className={`${cardClass} flex flex-col gap-3`} aria-label="Stretching calendar">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setMonth(addMonths(month, -1))}
-            aria-label="Previous month"
-            className="h-11 w-11 rounded-lg text-xl text-stone-300 active:bg-stone-800"
-          >
-            ‹
-          </button>
-          <h2 className="font-semibold">{formatMonth(month)}</h2>
-          <button
-            type="button"
-            onClick={() => setMonth(addMonths(month, 1))}
-            disabled={addMonths(month, 1) > today}
-            aria-label="Next month"
-            className="h-11 w-11 rounded-lg text-xl text-stone-300 active:bg-stone-800 disabled:opacity-30"
-          >
-            ›
-          </button>
-        </div>
-
-        <div className="flex gap-4 text-xs text-stone-400" aria-hidden="true">
-          {list.map((habit, i) => (
-            <span key={habit.id} className="flex items-center gap-1.5">
-              <Dot color={colorOf(i)} />
-              {habit.name}
+      <MonthCalendar
+        label="Stretching calendar"
+        month={month}
+        onMonthChange={days.setMonth}
+        selected={selected}
+        onSelect={days.setSelected}
+        today={today}
+        dimmed={days.loading}
+        legend={
+          <div className="flex gap-4 text-xs text-stone-400" aria-hidden="true">
+            {list.map((habit, i) => (
+              <span key={habit.id} className="flex items-center gap-1.5">
+                <Dot color={colorOf(i)} />
+                {habit.name}
+              </span>
+            ))}
+          </div>
+        }
+        renderDay={(date) => ({
+          marks: (
+            <span className="flex gap-1">
+              {list.map((h, i) => (
+                <Dot key={h.id} color={colorOf(i)} hollow={!isDone(h.id, date)} />
+              ))}
             </span>
-          ))}
-        </div>
-
-        <div className={`grid grid-cols-7 gap-1 transition-opacity ${checks.loading ? 'opacity-50' : ''}`}>
-          {WEEKDAYS.map((d, i) => (
-            <span key={i} className="text-center text-xs text-stone-500" aria-hidden="true">
-              {d}
-            </span>
-          ))}
-          {weeks.flat().map((date) => {
-            const inMonth = date.slice(0, 7) === month.slice(0, 7)
-            const future = date > today
-            const status = list
-              .map((h) => `${h.name} ${isDone(h.id, date) ? 'done' : 'not done'}`)
-              .join(', ')
-            return (
-              <button
-                key={date}
-                type="button"
-                disabled={future}
-                aria-pressed={date === selected}
-                aria-current={date === today ? 'date' : undefined}
-                aria-label={`${formatLongDate(date)}: ${status}`}
-                onClick={() => setSelected(date)}
-                className={`flex h-12 flex-col items-center justify-center gap-1 rounded-lg text-sm tabular-nums ${
-                  date === selected ? 'ring-2 ring-stone-300' : ''
-                } ${date === today ? 'font-bold text-stone-50' : inMonth ? 'text-stone-200' : 'text-stone-600'} disabled:opacity-30 enabled:active:bg-stone-800`}
-              >
-                {Number(date.slice(8))}
-                <span className="flex gap-1">
-                  {list.map((h, i) => (
-                    <Dot key={h.id} color={colorOf(i)} hollow={!isDone(h.id, date)} />
-                  ))}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-
-        {checks.error && <p className="text-sm text-red-300">Couldn&apos;t load days: {checks.error}</p>}
-
-        <p className="text-sm text-stone-400">
-          This month:{' '}
-          {list
-            .map((h) => {
-              const n = daysDoneInMonth(doneDates(h.id, monthDays), month)
-              return `${h.name} ${n} ${n === 1 ? 'day' : 'days'}`
-            })
-            .join(' · ')}
-        </p>
-      </section>
+          ),
+          status: list.map((h) => `${h.name} ${isDone(h.id, date) ? 'done' : 'not done'}`).join(', '),
+        })}
+        footer={
+          <>
+            {days.loadError && <p className="text-sm text-red-300">Couldn&apos;t load days: {days.loadError}</p>}
+            <p className="text-sm text-stone-400">
+              This month:{' '}
+              {list
+                .map((h) => {
+                  const n = daysDoneInMonth(doneDates(h.id, monthDays), month)
+                  return `${h.name} ${n} ${n === 1 ? 'day' : 'days'}`
+                })
+                .join(' · ')}
+            </p>
+          </>
+        }
+      />
 
       <a href={routeHref('settings')} className="self-center py-2 text-sm text-stone-400 underline underline-offset-4">
         Change weekly goals

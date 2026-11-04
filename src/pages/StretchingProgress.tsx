@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { habitColor } from '../components/habitColors'
 import { RangePicker } from '../components/RangePicker'
-import { StretchWeekGrid } from '../components/StretchWeekGrid'
+import { WeekGrid } from '../components/WeekGrid'
 import { cardClass } from '../components/ui'
 import { todayLocal, weekStart, type ISODate } from '../lib/dates'
 import { allChecks, listHabits, type Habit } from '../lib/db/habits'
@@ -119,10 +119,16 @@ function RoutineCard({
         <Figure label="Week streak" value={weeksText(streak)} />
         <Figure label="Goal met" value={counted.length === 0 ? '–' : `${met} of ${weeksText(counted.length)}`} />
       </div>
-      <StretchWeekGrid
+      <WeekGrid
         name={habit.name}
         color={color}
-        weeks={weeks}
+        weeks={weeks.map((w) => ({
+          weekStart: w.weekStart,
+          done: w.done,
+          mark: w.met ? '✓' : w.complete ? '–' : '·',
+          result: w.met ? 'met' : w.complete ? 'missed' : 'in progress',
+        }))}
+        resultLabel="Goal"
         isDone={(date) => doneSet.has(date)}
         today={today}
       />

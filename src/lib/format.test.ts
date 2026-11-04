@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
   cleanDurationDigits,
+  cleanHmDigits,
   durationDigitsToSeconds,
   formatDuration,
   formatDurationDigits,
+  formatHmDigits,
   formatMiles,
+  formatMinutes,
   formatPace,
   formatPaceChange,
   formatWeight,
+  hmDigitsToMinutes,
+  minutesToHmDigits,
   parseDistance,
   secondsToDurationDigits,
 } from './format'
@@ -127,5 +132,46 @@ describe('formatMiles', () => {
   it('always shows two decimals', () => {
     expect(formatMiles(5)).toBe('5.00')
     expect(formatMiles(13.1)).toBe('13.10')
+  })
+})
+
+describe('hours:minutes entry', () => {
+  it('cleans input to up to 4 digits, keeping a lone 0', () => {
+    expect(cleanHmDigits('2:15')).toBe('215')
+    expect(cleanHmDigits('0015')).toBe('15')
+    expect(cleanHmDigits('000')).toBe('0')
+    expect(cleanHmDigits('123456')).toBe('1234')
+    expect(cleanHmDigits('')).toBe('')
+  })
+  it('formats as you type', () => {
+    expect(formatHmDigits('')).toBe('')
+    expect(formatHmDigits('5')).toBe('0:05')
+    expect(formatHmDigits('45')).toBe('0:45')
+    expect(formatHmDigits('215')).toBe('2:15')
+    expect(formatHmDigits('1030')).toBe('10:30')
+  })
+  it('converts to minutes, rejecting 60+ minutes and a full day', () => {
+    expect(hmDigitsToMinutes('215')).toBe(135)
+    expect(hmDigitsToMinutes('0')).toBe(0)
+    expect(hmDigitsToMinutes('2359')).toBe(1439)
+    expect(hmDigitsToMinutes('260')).toBeNull()
+    expect(hmDigitsToMinutes('2400')).toBeNull()
+    expect(hmDigitsToMinutes('')).toBeNull()
+    expect(hmDigitsToMinutes('2:15')).toBeNull()
+  })
+  it('round-trips minutes to digits', () => {
+    for (const minutes of [0, 5, 45, 60, 135, 1439]) {
+      expect(hmDigitsToMinutes(minutesToHmDigits(minutes))).toBe(minutes)
+    }
+    expect(minutesToHmDigits(135)).toBe('215')
+    expect(minutesToHmDigits(0)).toBe('0')
+  })
+  it('formats minutes for display', () => {
+    expect(formatMinutes(135)).toBe('2h 15m')
+    expect(formatMinutes(120)).toBe('2h')
+    expect(formatMinutes(45)).toBe('45m')
+    expect(formatMinutes(0)).toBe('0m')
+    expect(formatMinutes(89.6)).toBe('1h 30m')
+    expect(formatMinutes(-30)).toBe('30m')
   })
 })

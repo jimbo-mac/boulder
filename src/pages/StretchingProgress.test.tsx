@@ -7,8 +7,8 @@ vi.mock('../lib/db/habits', () => ({ listHabits: vi.fn(), allChecks: vi.fn() }))
 const mockList = vi.mocked(listHabits)
 const mockChecks = vi.mocked(allChecks)
 
-const p = (date: string) => ({ habitId: 'p', date })
-const g = (date: string) => ({ habitId: 'g', date })
+const p = (date: string) => ({ habitId: 'p', date, minutes: null })
+const g = (date: string) => ({ habitId: 'g', date, minutes: null })
 
 function card(name: string): HTMLElement {
   return screen.getByRole('heading', { name }).closest('section') as HTMLElement
@@ -22,8 +22,8 @@ describe('StretchingProgress', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date(2026, 10, 4, 9, 0)) // Wed Nov 4 2026; 1m = weeks of Oct 12, 19, 26, Nov 2
     mockList.mockReset().mockResolvedValue([
-      { id: 'p', name: 'Posture', weeklyGoal: 2 },
-      { id: 'g', name: 'General', weeklyGoal: 3 },
+      { id: 'p', name: 'Posture', tracking: 'check' as const, weeklyGoal: 2 },
+      { id: 'g', name: 'General', tracking: 'check' as const, weeklyGoal: 3 },
     ])
     const saved = [
       // Posture (2/wk): met, met, missed, met (this week).

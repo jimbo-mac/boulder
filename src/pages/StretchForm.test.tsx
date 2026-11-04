@@ -8,8 +8,8 @@ const mockList = vi.mocked(listHabits)
 const mockChecks = vi.mocked(checksBetween)
 const mockSet = vi.mocked(setCheck)
 
-const posture = { id: 'p', name: 'Posture', weeklyGoal: 3 }
-const general = { id: 'g', name: 'General', weeklyGoal: 2 }
+const posture = { id: 'p', name: 'Posture', tracking: 'check' as const, weeklyGoal: 3 }
+const general = { id: 'g', name: 'General', tracking: 'check' as const, weeklyGoal: 2 }
 
 const routine = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) })
 const day = (label: string) => screen.getByRole('button', { name: new RegExp(`^${label}:`) })
@@ -20,10 +20,10 @@ describe('StretchForm', () => {
     vi.setSystemTime(new Date(2026, 10, 4, 9, 0)) // Wed Nov 4 2026
     mockList.mockReset().mockResolvedValue([posture, general])
     const saved = [
-      { habitId: 'p', date: '2026-11-02' },
-      { habitId: 'p', date: '2026-11-03' },
-      { habitId: 'g', date: '2026-11-03' },
-      { habitId: 'g', date: '2026-10-29' },
+      { habitId: 'p', date: '2026-11-02', minutes: null },
+      { habitId: 'p', date: '2026-11-03', minutes: null },
+      { habitId: 'g', date: '2026-11-03', minutes: null },
+      { habitId: 'g', date: '2026-10-29', minutes: null },
     ]
     // Like the real query: only the habits asked for, within the dates.
     mockChecks

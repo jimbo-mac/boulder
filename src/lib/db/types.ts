@@ -67,14 +67,17 @@ export type Database = {
         Row: {
           date: string
           habit_id: string
+          minutes: number | null
         }
         Insert: {
           date: string
           habit_id: string
+          minutes?: number | null
         }
         Update: {
           date?: string
           habit_id?: string
+          minutes?: number | null
         }
         Relationships: [
           {
@@ -88,29 +91,35 @@ export type Database = {
       }
       habits: {
         Row: {
+          archived_at: string | null
           created_at: string
           id: string
           kind: string
           name: string
           sort_order: number
+          tracking: string
           user_id: string
           weekly_goal: number
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           kind: string
           name: string
           sort_order?: number
+          tracking?: string
           user_id?: string
           weekly_goal?: number
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           id?: string
           kind?: string
           name?: string
           sort_order?: number
+          tracking?: string
           user_id?: string
           weekly_goal?: number
         }

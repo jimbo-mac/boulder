@@ -1,3 +1,4 @@
+import { HabitsManager } from '../components/HabitsManager'
 import { StretchGoals } from '../components/StretchGoals'
 import { useState, type FormEvent } from 'react'
 import {
@@ -42,6 +43,12 @@ export function Settings({ email }: { email: string }) {
         )}
         {settings.data === undefined && !settings.error && <p className="text-stone-400">Loading…</p>}
         {settings.data && <GoalForm initial={settings.data} />}
+      </section>
+
+      <section className={cardClass}>
+        <h2 className="mb-1 font-semibold">Habits</h2>
+        <p className="mb-4 text-sm text-stone-400">Daily check-offs on Log &gt; Habits. Screen time is built in.</p>
+        <HabitsManager />
       </section>
 
       <section className={cardClass}>

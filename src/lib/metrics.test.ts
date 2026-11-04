@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysDoneInMonth, goalPace, goalStreak, goalWeeks, pace, paceTrend, predictRaceTime, riegel, runPRs, weeklyGoalProgress, weeklyMileage, type RunPRInput } from './metrics'
+import { averageMinutes, bestStreak, dailyMinutes, dailyStreak, daysDoneInMonth, goalPace, goalStreak, goalWeeks, pace, paceTrend, predictRaceTime, riegel, runPRs, weeklyGoalProgress, weeklyMileage, type RunPRInput } from './metrics'
 
 describe('riegel', () => {
   it('returns the same time for the same distance', () => {
@@ -333,5 +333,72 @@ describe('goalStreak', () => {
   })
   it('ignores days after today', () => {
     expect(goalStreak(['2026-11-05', '2026-11-06'], '2026-11-04', 2)).toBe(0)
+  })
+})
+
+describe('dailyStreak', () => {
+  const today = '2026-11-04'
+  it('counts days in a row ending today', () => {
+    expect(dailyStreak(['2026-11-02', '2026-11-03', '2026-11-04'], today)).toBe(3)
+  })
+  it('runs through yesterday while today is unchecked', () => {
+    expect(dailyStreak(['2026-11-01', '2026-11-02', '2026-11-03'], today)).toBe(3)
+  })
+  it('is 0 when yesterday and today are both missed', () => {
+    expect(dailyStreak(['2026-11-01', '2026-11-02'], today)).toBe(0)
+    expect(dailyStreak([], today)).toBe(0)
+  })
+  it('stops at a gap, crosses months, and ignores future days', () => {
+    expect(dailyStreak(['2026-10-29', '2026-10-31', '2026-11-01', '2026-11-05'], '2026-11-01')).toBe(2)
+  })
+})
+
+describe('bestStreak', () => {
+  it('finds the longest run, ignoring duplicates and order', () => {
+    expect(
+      bestStreak(['2026-10-05', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-03', '2026-10-10', '2026-10-11'], '2026-11-04'),
+    ).toBe(3)
+  })
+  it('handles month and year boundaries', () => {
+    expect(bestStreak(['2026-12-30', '2026-12-31', '2027-01-01', '2027-01-02'], '2027-01-05')).toBe(4)
+  })
+  it('ignores days after today and is 0 for none', () => {
+    expect(bestStreak(['2026-11-04', '2026-11-05', '2026-11-06'], '2026-11-04')).toBe(1)
+    expect(bestStreak([], '2026-11-04')).toBe(0)
+  })
+})
+
+describe('dailyMinutes', () => {
+  const e = (date: string, minutes: number) => ({ date, minutes })
+  it('gives each day, null when not logged, with a trailing 7-day average of logged days', () => {
+    const points = dailyMinutes([e('2026-10-28', 300), e('2026-11-02', 120), e('2026-11-04', 60)], '2026-11-02', '2026-11-04')
+    expect(points).toEqual([
+      { date: '2026-11-02', minutes: 120, avg7: 210 }, // Oct 27–Nov 2: 300, 120
+      { date: '2026-11-03', minutes: null, avg7: 210 },
+      { date: '2026-11-04', minutes: 60, avg7: 90 }, // Oct 29–Nov 4: 120, 60 (Oct 28 dropped out)
+    ])
+  })
+  it('keeps 0 minutes as a logged day', () => {
+    expect(dailyMinutes([e('2026-11-02', 0)], '2026-11-02', '2026-11-02')).toEqual([
+      { date: '2026-11-02', minutes: 0, avg7: 0 },
+    ])
+  })
+  it('has a null average with nothing logged nearby', () => {
+    expect(dailyMinutes([], '2026-11-02', '2026-11-02')).toEqual([{ date: '2026-11-02', minutes: null, avg7: null }])
+  })
+  it('rejects bad input', () => {
+    expect(() => dailyMinutes([], '2026-11-04', '2026-11-02')).toThrow(RangeError)
+    expect(() => dailyMinutes([e('2026-11-02', -5)], '2026-11-02', '2026-11-02')).toThrow(RangeError)
+    expect(() => dailyMinutes([e('2026-11-02', 1.5)], '2026-11-02', '2026-11-02')).toThrow(RangeError)
+  })
+})
+
+describe('averageMinutes', () => {
+  const e = (date: string, minutes: number) => ({ date, minutes })
+  it('averages logged days in the range only', () => {
+    expect(averageMinutes([e('2026-10-31', 500), e('2026-11-01', 100), e('2026-11-03', 200)], '2026-11-01', '2026-11-04')).toBe(150)
+  })
+  it('is null when nothing is logged', () => {
+    expect(averageMinutes([e('2026-10-01', 100)], '2026-11-01', '2026-11-04')).toBeNull()
   })
 })
