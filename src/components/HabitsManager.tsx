@@ -3,6 +3,29 @@ import { archiveHabit, createHabit, listHabits, renameHabit, setHabitTracking, t
 import { useAsync } from '../lib/useAsync'
 import { errorMessage, inputClass, linkButtonClass } from './ui'
 
+const iconButton =
+  'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-stone-700 text-stone-300 active:bg-stone-800 disabled:opacity-40'
+
+function Icon({ path }: { path: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={path} />
+    </svg>
+  )
+}
+
+const PENCIL = 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4'
+const TRASH = 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'
+
 const smallButton =
   'h-11 shrink-0 rounded-lg border border-stone-700 px-3 text-sm text-stone-200 active:bg-stone-800 disabled:opacity-40'
 
@@ -163,40 +186,41 @@ function HabitRow({
   }
 
   return (
-    <li className="flex flex-col gap-1">
-      <div className="flex items-center justify-between gap-2">
-        <span className="min-w-0 truncate font-medium">{habit.name}</span>
-        <span className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            aria-label={`Rename ${habit.name}`}
-            onClick={() => setEditing(true)}
+    <li className="flex items-center justify-between gap-2">
+      <span className="min-w-0 truncate font-medium">{habit.name}</span>
+      <span className="flex shrink-0 items-center gap-2">
+        <label className="flex h-11 items-center gap-1.5 pr-1 text-sm text-stone-300">
+          <input
+            type="checkbox"
+            aria-label={`Log ${habit.name} with ✓ / ✗`}
+            checked={habit.tracking === 'yesno'}
             disabled={busy}
-            className={smallButton}
-          >
-            Rename
-          </button>
-          <button
-            type="button"
-            aria-label={`Remove ${habit.name}`}
-            onClick={onArchive}
-            disabled={busy}
-            className={smallButton}
-          >
-            Remove
-          </button>
-        </span>
-      </div>
-      <label className="flex min-h-11 items-center gap-2 text-sm text-stone-400">
-        <input
-          type="checkbox"
-          checked={habit.tracking === 'yesno'}
+            onChange={(e) => onTracking(e.target.checked ? 'yesno' : 'check')}
+            className="h-5 w-5 accent-stone-100"
+          />
+          <span aria-hidden="true">✓/✗</span>
+        </label>
+        <button
+          type="button"
+          aria-label={`Rename ${habit.name}`}
+          title="Rename"
+          onClick={() => setEditing(true)}
           disabled={busy}
-          onChange={(e) => onTracking(e.target.checked ? 'yesno' : 'check')}
-          className="h-5 w-5 accent-stone-100"
-        />
-        Log with ✓ / ✗ (record misses)
-      </label>
+          className={iconButton}
+        >
+          <Icon path={PENCIL} />
+        </button>
+        <button
+          type="button"
+          aria-label={`Remove ${habit.name}`}
+          title="Remove"
+          onClick={onArchive}
+          disabled={busy}
+          className={iconButton}
+        >
+          <Icon path={TRASH} />
+        </button>
+      </span>
     </li>
   )
 }

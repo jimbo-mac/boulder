@@ -47,7 +47,10 @@ export function Settings({ email }: { email: string }) {
 
       <section className={cardClass}>
         <h2 className="mb-1 font-semibold">Habits</h2>
-        <p className="mb-4 text-sm text-stone-400">Daily check-offs on Log &gt; Habits. Screen time is built in.</p>
+        <p className="mb-4 text-sm text-stone-400">
+          Daily check-offs on Log &gt; Habits. Tick ✓/✗ to log a habit as done or missed each day. Screen time is
+          built in.
+        </p>
         <HabitsManager />
       </section>
 

@@ -200,7 +200,7 @@ describe('Settings habits', () => {
   it('switches a habit to ✓ / ✗ logging and back', async () => {
     vi.mocked(setHabitTracking).mockReset().mockResolvedValue()
     render(<Settings email="me@example.com" />)
-    const box = await screen.findByRole('checkbox', { name: /Log with ✓ \/ ✗/ })
+    const box = await screen.findByRole('checkbox', { name: 'Log Read with ✓ / ✗' })
     expect(box).not.toBeChecked()
     fireEvent.click(box)
     await waitFor(() => expect(box).toBeChecked())
